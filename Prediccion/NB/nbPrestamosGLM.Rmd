@@ -1,0 +1,701 @@
+---
+title: "Préstamos y GLM"
+author: "José María Álvarez Silva"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+Predicción
+
+#### Propósito
+
+* Utilizar modelos GLM para determinar si se otorga un préstamo bancario o no. Obtener los datos a partir de la base de datos en SQL para trabajar con ellos en R. La BBDD contiene información a cerca de préstamos bancarios otorgados, las características de estos y las descripción de la persona que pide el préstamo. Después de analisar las variables basados en el artículo de Berger y Gleisner, y el artículo de Emekter, Tu, Jirasakuldech y Lu, además de la lógica detrás de un crédito, se trabajo para predecir el evento de default con algunas de estas características. 
+
+* Se trabajó con cada un de las variables categóricas para generar las dummies adecuadas y la transformación de variables ordinales para la correcta implementación de un modelo.
+
+#### Analísis Exploratorio de Datos
+
+La Base de Datos contiene __887378__ observaciones (excluyendo NAs) y solo __1219__ casos son __Default__ lo cual representa un problema de balance en nuestros datos.
+
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE}
+## Paquetes 
+##
+library(readr)     ##  cargar data sets
+library(ISLR)      ##  paqueteria de Introduction to statistical learning in R
+library(skimr)     ##  Beautiful Summarize
+library(ggplot2)   ##  Ploting
+library(dplyr)     ##  programación tidy
+library(corrplot)  ##  gráficas de correlación
+library(mltools)   ##  one hot encoding tools
+library(onehot)    ##  same
+library(cleandata) ##  same
+library(vcd)       ##  Association Statistics
+library(ROCR)      ##  Curva ROC
+library(boot)      ##  Bootsrapping
+library(knitr)
+library(kableExtra)
+
+## Datos 
+datos <- na.omit(read_csv("DATOS.csv"))
+
+## Data Wrangling
+
+## Clean Dataset (numeric variables incluidas al principio)
+datosClean <- datos[, c(1,5,6)]
+datosClean$int_rate <- as.double(gsub("%", "", datosClean$int_rate))/100
+
+## Default
+Default <- (datos$loan_status == "Default")*1
+datosClean$Default <- Default
+
+## factor columns
+##
+## Ordinal encoding
+datos$emp_length <- factor(datos$emp_length, levels = c("n/a", "< 1 year", "1 year", "2 years",
+                                                        "3 years", "4 years", "5 years", 
+                                                        "6 years", "7 years", "8 years",  
+                                                        "9 years", "10+ years" ), ordered = TRUE)
+employmentFunct <- function(x){
+  switch(x, 
+         "n/a" = {
+           return(1)
+         },
+         "< 1 year" = {
+           return(2)
+         },
+         "1 year" = {
+           return(3)
+         },
+         "2 years" = {
+           return(4)
+         },
+         "3 years" = {
+           return(5)
+         },
+         "4 years" = {
+           return(6)
+         },
+         "5 years" = {
+           return(7)
+         },
+         "6 years" = {
+           return(8)
+         },
+         "7 years" = {
+           return(9)
+         },
+         "8 years" = {
+           return(10)
+         },
+         "9 years" = {
+           return(11)
+         },
+         {
+           return(12)
+         }
+  )
+}
+
+datosClean$emp_length <- sapply(datos$emp_length,employmentFunct)
+
+###
+datosClean$grade <- factor(datos$grade)
+
+gradeFunct <- function(x){
+  switch(x, 
+         "A" = {
+           return(1)
+         },
+         "B" = {
+           return(2)
+         },
+         "C" = {
+           return(3)
+         },
+         "D" = {
+           return(4)
+         },
+         "E" = {
+           return(5)
+         },
+         "F" = {
+           return(6)
+         },
+         {
+           return(7)
+         }
+  )
+}
+
+datosClean$grade <- sapply(datos$grade, gradeFunct)
+
+##
+## Nominal - Onehot Encoding
+datos$home_ownership <- factor(datos$home_ownership)
+datos$purpose        <- factor(datos$purpose)
+datos$term           <- factor(datos$term)
+
+home_ownership        <- as.data.frame(datos$home_ownership)
+encoder               <- onehot(home_ownership)
+home_ownership_onehot <- predict(encoder, home_ownership, stringsAsFactors = TRUE)
+datosClean            <- cbind(datosClean, home_ownership_onehot)
+
+purpose        <- as.data.frame(datos$purpose)
+encoder        <- onehot(purpose, max_levels = 15)
+purpose_onehot <- predict(encoder, purpose, stringsAsFactors = TRUE)
+datosClean     <- cbind(datosClean, purpose_onehot)
+
+term        <- as.data.frame(datos$term)
+encoder     <- onehot(term, max_levels = 15)
+term_onehot <- predict(encoder, term, stringsAsFactors = TRUE)
+datosClean  <- cbind(datosClean, term_onehot)
+
+## Escalamos
+
+escalar <- function(x) {
+  minD <- mean(x)
+  maxD <- sd(x)
+  res <- (x - minD) / (maxD)
+  return(res)
+}
+datosClean2 <- datosClean
+
+datosClean2$annual_inc <- escalar(datosClean$annual_inc)
+datosClean2$int_rate   <- escalar(datosClean$int_rate)
+datosClean2$emp_length <- escalar(datosClean$emp_length)
+datosClean2$loan_amnt <- escalar(datosClean$loan_amnt)
+```
+
+##### Annual income
+
+* The self-reported annual income provided by the borrower during registration.
+
+```{r, echo = FALSE, warning = FALSE}
+ggplot(data = datosClean) + geom_histogram(aes(annual_inc), binwidth = 100000, colour = "white")
+
+ggplot(data = datosClean, aes(x = as.factor(Default), y = annual_inc)) + geom_boxplot() +
+  scale_y_continuous(trans = 'log10') + ggtitle("Ingreso Anual (Escala Logarítmica)") + xlab("Default")
+
+```
+
+##### Interest rate
+
+* Interest Rate on the loan.
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE}
+ggplot(data = datosClean) + geom_histogram(aes(int_rate), colour = "white")
+
+ggplot(data = datosClean, aes(x = as.factor(Default), y = int_rate)) + geom_boxplot() +
+  ggtitle("Tasa de Interés") + xlab("Default")
+```
+
+##### Loan Amount
+
+* The listed amount of the loan applied for by the borrower. If at some point in time, the credit department reduces the loan amount, then it will be reflected in this value.
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE}
+ggplot(data = datosClean) + geom_histogram(aes(loan_amnt), colour = "white")
+
+ggplot(data = datosClean, aes(x = as.factor(Default), y = loan_amnt)) + geom_boxplot() +
+  ggtitle("Monto del Préstamo") + xlab("Default")
+```
+
+##### Employment Length
+
+* Employment length in years. Possible values are between 0 and 10 where 0 means less than one year and 10 means ten or more years. 
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE}
+ggplot(data = datosClean) + geom_histogram(aes((emp_length)), colour = "white") + xlab("")
+xtabs(~Default + emp_length, data = datosClean)
+nemp_length <- xtabs(~Default + emp_length, data = datosClean)[2,] +
+  xtabs(~Default + emp_length, data = datosClean)[1,]
+
+barplot(round(xtabs(~Default + emp_length, data = datosClean)[2,] / nemp_length, 7), main = "Años de Empleo", names.arg = c("n/a", "< 1 year", "1 year", "2 years",
+                                                        "3 years", "4 years", "5 years", 
+                                                        "6 years", "7 years", "8 years",  
+                                                        "9 years", "10+ years" ), ylab = "Default")
+  
+```
+
+##### Grade
+
+* LC assigned loan grade (Toma valores de A a G; i.e. de mejor a peor calificación)
+
+```{r, echo = FALSE, warning = FALSE}
+ggplot(data = datosClean) + geom_histogram(aes((grade)), colour = "white") + xlab("")
+
+xtabs(~Default + grade, data = datosClean)
+
+ngrade <- xtabs(~Default + grade, data = datosClean)[2,] +
+  xtabs(~Default + grade, data = datosClean)[1,]
+
+barplot(round(xtabs(~Default + grade, data = datosClean)[2,] / ngrade, 7), main = "Grade",
+        names.arg = c("A", "B", "C", "D", "E", "F", "G"), ylab = "Default")
+
+```
+
+##### Variable Mortgage
+
+* valor de la variable home_ownership en el caso que la persona interesada en el crédito tenga una hipoteca.
+
+```{r, echo = FALSE, warning = FALSE}
+xtabs(~Default + `datos$home_ownership=MORTGAGE`, data = datosClean)
+```
+
+##### Variable Own
+
+* valor de la variable home_ownership en el caso que la persona interesada en el crédito sea dueña de su casa.
+
+```{r, echo = FALSE, warning = FALSE}
+xtabs(~Default + `datos$home_ownership=OWN`, data = datosClean)
+```
+
+##### Variable Rent
+
+* valor de la variable home_ownership en el caso que la persona interesada en el crédito rente su casa.
+
+```{r, echo = FALSE, warning = FALSE}
+xtabs(~Default + `datos$home_ownership=RENT`, data = datosClean)
+```
+
+
+
+#### Desarrollo del Modelo
+
+Para entrenar el modelo dividimos la Base de Datos en dos. La mitad de los datos formarán parte de train (set de entrenamiento); mientras que el resto de los datos se utilizarán para poner a prueba la presición de nuestro modelo; i.e. out of sample test. También analizaremos los resultados para ciertos individuos tipo para ver si nuestro análisis y conocimiento previo de las variables tiene sientido. (OJO al momemto de generar el modelo es importante especificar que es de la familia __Binomial__ para que sea logit)
+
+Modelo
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
+modelo4 <- glm(data = datosClean2[,-c(7, 9, 10, 13:28)], Default ~ ., family = "binomial")
+summary(modelo4)
+```
+
+
+```{r, message=FALSE, warning = FALSE}
+## 
+mod4.pred <- predict(modelo4,type = "response")
+set.seed(131822)
+train <- sample(nrow(datosClean2), nrow(datosClean2)/2) ## la mitad de los datos para training
+test  <- datosClean2[-train,]
+
+
+## Estimamos el modelo con las mismas variables que en el modelo4  
+glm.model <- glm(data = datosClean2[,-c(7, 9, 10, 13:28)],
+                 Default ~ . ,
+                 family = "binomial",
+                 subset = train)
+
+train <- datosClean2[train,]
+```
+
+* Definimos una función que nos permita evaluar la presición __Accuracy__ cambiando el cutoff a partir del cual otorgamos el valor de uno o cero a las probabilidades de __Default__ obtenidas.
+
+```{r}
+## Funcion para determinar el accuracy
+fAccuracy <- function(cut_off, mod01.pred = mod4.pred, datos = datosClean2){
+  glm.pred <- rep(0, nrow(datos))
+  glm.pred[mod01.pred  > cut_off] = 1 #default
+  return(mean(glm.pred == datos$Default))
+}
+```
+
+Predecimos con test para poner a prieba la presición de nuestro modelo (se debe añadir el parámetro "response" para que devuelva valores entre cero y uno)
+
+```{r}
+## Predecir con test.  
+glm.model.pred <- predict(glm.model, test, type = "response")
+```
+
+Como varía la presicion cuando varía el cutoff:
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE}
+cutoff <- seq(0,.2,0.0001)
+accuracy <- sapply(seq(0,.2,0.0001), fAccuracy)
+plot(cutoff, accuracy, xlim = c(0,1))
+abline(h = 1, col = "red")
+```
+
+Muy pronto llega a valores cercanos a uno ya que la muestra tiene __99.86185% de no Defaults__. En muestras poco balanceadas el accuracy no es una buena medida a optimizar.
+
+##### Interpretación de los Coeficientes (odds)
+
+```{r, echo=FALSE}
+exp(coef(modelo4)[-1])
+```
+
+Respresentan los valores de cambio marginal por unidad de medida de la variable analizada:
+
+* Annual income tiene un $e^{\beta}$ menor a uno, lo que significa que un aumento en una unidad de la vairiable (escalada) de ingresos diminuirá en 20% los odds de default.
+* Interest Rate tiene un $e^{\beta}$ mayor a uno, lo que significa que un aumento en una unidad de la vairiable (escalada) de tasa de interés aumentará en 114% los odds de default.
+* Loan Amount tiene un $e^{\beta}$ mayor a uno, lo que significa que un aumento en una unidad de la vairiable (escalada) de ingresos aumentará en 3.7% los odds de default
+* Employment Length tiene un $e^{\beta}$ mayor a uno, lo que significa que pasar de una clasificacion menor a la siguiente mayor aumentará en 1.24% los odds de default.
+* Grade tiene un $e^{\beta}$ menor a uno, lo que significa que pasar de una clasificacion menor a la siguiente mayor diminuirá en 15% los odds de default. (esto es un poco contradictorio a lo que vimos antes; debe ser por la interaccion de grade on alguna otra variable).
+* Mortgage, Own y Rent tienen mayor impacto y parace que estar en una de estas categorias te vuelve más propenso al default.
+
+Por el problema de escala veremos mejor como afecta cada variable (dentro del conjunto de variables) a la probabilidad de default.
+
+##### Individuos Tipo
+
+Analizaremos diferentes escenarios para ver como afecta cada variable a las probabilidades de default.
+
+###### Anual Income
+
+```{r, echo=FALSE}
+newdata1 <- with(datosClean2,
+                 data.frame(annual_inc = c(sort(annual_inc)[nrow(datosClean2)/2] - 1,
+                                           sort(annual_inc)[nrow(datosClean2)/2],
+                                           sort(annual_inc)[nrow(datosClean2)/2] + 1),
+                            int_rate   = mean(int_rate),
+                            loan_amnt  = mean(loan_amnt),
+                            emp_length = 12,
+                            grade      = 2,
+                            `datos$home_ownership=MORTGAGE` = 1,
+                            `datos$home_ownership=OWN`      = 0,
+                            `datos$home_ownership=RENT`     = 0)
+                 )
+colnames(newdata1) <- c("annual_inc",
+                        "int_rate",
+                        "loan_amnt",
+                        "emp_length",
+                        "grade",
+                        "datos$home_ownership=MORTGAGE",
+                        "datos$home_ownership=OWN",
+                        "datos$home_ownership=RENT")
+
+barplot(predict(modelo4, newdata = newdata1, type = "response"), main = "Ingresos vs p(Default)")
+```
+
+###### Interest rate
+
+```{r, echo=FALSE}
+newdata1 <- with(datosClean2,
+                 data.frame(annual_inc = mean(annual_inc),
+                            int_rate   = c(sort(int_rate)[nrow(datosClean2)/2] - 1,
+                                           sort(int_rate)[nrow(datosClean2)/2],
+                                           sort(int_rate)[nrow(datosClean2)/2] + 1),
+                            loan_amnt  = mean(loan_amnt),
+                            emp_length = 12,
+                            grade      = 2,
+                            `datos$home_ownership=MORTGAGE` = 1,
+                            `datos$home_ownership=OWN`      = 0,
+                            `datos$home_ownership=RENT`     = 0)
+                 )
+colnames(newdata1) <- c("annual_inc",
+                        "int_rate",
+                        "loan_amnt",
+                        "emp_length",
+                        "grade",
+                        "datos$home_ownership=MORTGAGE",
+                        "datos$home_ownership=OWN",
+                        "datos$home_ownership=RENT")
+
+barplot(predict(modelo4, newdata = newdata1, type = "response"), main = "Tasa de Interes vs p(Default)")
+```
+
+
+###### Loan Amount
+
+```{r, echo=FALSE}
+newdata1 <- with(datosClean2,
+                 data.frame(annual_inc = mean(annual_inc),
+                            int_rate   = mean(int_rate),
+                            loan_amnt  = c(sort(loan_amnt)[nrow(datosClean2)/2] - 1,
+                                           sort(loan_amnt)[nrow(datosClean2)/2],
+                                           sort(loan_amnt)[nrow(datosClean2)/2] + 1),
+                            emp_length = 12,
+                            grade      = 2,
+                            `datos$home_ownership=MORTGAGE` = 1,
+                            `datos$home_ownership=OWN`      = 0,
+                            `datos$home_ownership=RENT`     = 0)
+                 )
+colnames(newdata1) <- c("annual_inc",
+                        "int_rate",
+                        "loan_amnt",
+                        "emp_length",
+                        "grade",
+                        "datos$home_ownership=MORTGAGE",
+                        "datos$home_ownership=OWN",
+                        "datos$home_ownership=RENT")
+
+barplot(predict(modelo4, newdata = newdata1, type = "response"), main = "Monto vs p(Default)")
+```
+
+
+###### Grade
+
+```{r, echo=FALSE}
+newdata1 <- with(datosClean2,
+                 data.frame(annual_inc = mean(annual_inc),
+                            int_rate   = mean(int_rate),
+                            loan_amnt  = mean(loan_amnt),
+                            emp_length = 12,
+                            grade      = 1:7,
+                            `datos$home_ownership=MORTGAGE` = 1,
+                            `datos$home_ownership=OWN`      = 0,
+                            `datos$home_ownership=RENT`     = 0)
+                 )
+colnames(newdata1) <- c("annual_inc",
+                        "int_rate",
+                        "loan_amnt",
+                        "emp_length",
+                        "grade",
+                        "datos$home_ownership=MORTGAGE",
+                        "datos$home_ownership=OWN",
+                        "datos$home_ownership=RENT")
+
+barplot(predict(modelo4, newdata = newdata1, type = "response"), main = "Grade vs p(Default)")
+```
+
+
+###### Mortgage
+
+```{r, echo=FALSE}
+newdata1 <- with(datosClean2,
+                 data.frame(annual_inc = mean(annual_inc),
+                            int_rate   = mean(int_rate),
+                            loan_amnt  = mean(loan_amnt),
+                            emp_length = 12,
+                            grade      = 2,
+                            `datos$home_ownership=MORTGAGE` = c(0,1),
+                            `datos$home_ownership=OWN`      = 0,
+                            `datos$home_ownership=RENT`     = 0)
+                 )
+colnames(newdata1) <- c("annual_inc",
+                        "int_rate",
+                        "loan_amnt",
+                        "emp_length",
+                        "grade",
+                        "datos$home_ownership=MORTGAGE",
+                        "datos$home_ownership=OWN",
+                        "datos$home_ownership=RENT")
+
+barplot(predict(modelo4, newdata = newdata1, type = "response"), main = "Mortgage vs p(Default)")
+```
+
+
+###### OWN
+
+```{r, echo=FALSE}
+newdata1 <- with(datosClean2,
+                 data.frame(annual_inc = mean(annual_inc),
+                            int_rate   = mean(int_rate),
+                            loan_amnt  = mean(loan_amnt),
+                            emp_length = 12,
+                            grade      = 2,
+                            `datos$home_ownership=MORTGAGE` = 0,
+                            `datos$home_ownership=OWN`      = c(0,1),
+                            `datos$home_ownership=RENT`     = 0)
+                 )
+colnames(newdata1) <- c("annual_inc",
+                        "int_rate",
+                        "loan_amnt",
+                        "emp_length",
+                        "grade",
+                        "datos$home_ownership=MORTGAGE",
+                        "datos$home_ownership=OWN",
+                        "datos$home_ownership=RENT")
+
+barplot(predict(modelo4, newdata = newdata1, type = "response"), main = "Own vs p(Default)")
+```
+
+
+###### Rent
+
+```{r, echo=FALSE}
+newdata1 <- with(datosClean2,
+                 data.frame(annual_inc = mean(annual_inc),
+                            int_rate   = mean(int_rate),
+                            loan_amnt  = mean(loan_amnt),
+                            emp_length = 12,
+                            grade      = 2,
+                            `datos$home_ownership=MORTGAGE` = 0,
+                            `datos$home_ownership=OWN`      = 0,
+                            `datos$home_ownership=RENT`     = c(0,1))
+                 )
+colnames(newdata1) <- c("annual_inc",
+                        "int_rate",
+                        "loan_amnt",
+                        "emp_length",
+                        "grade",
+                        "datos$home_ownership=MORTGAGE",
+                        "datos$home_ownership=OWN",
+                        "datos$home_ownership=RENT")
+
+barplot(predict(modelo4, newdata = newdata1, type = "response"), main = "Rent vs p(Default)")
+```
+
+
+#### Evaluando el Modelo
+
+* Modelo
+
+```{r}
+summary(modelo4)
+```
+
+Histogramas de los valores predichos sin transformar y transformados (0,1). 
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE}
+ggplot(data = as.data.frame(predict(modelo4))) +
+  geom_histogram(aes(x = predict(modelo4)), binwidth = .5, color = "white") +
+  xlim(-10,0) + xlab("Valores de Prediccion")
+ggplot(data = as.data.frame(predict(modelo4,type = "response"))) +
+  geom_histogram(aes(x = predict(modelo4,type = "response")), binwidth = .0001, color = "white") +
+  xlim(0,.014) + xlab("Valores de Prediccion")
+```
+
+Se observa que las observaciones se concentran en valores pequeños cercanos a cero y que la distribución muestral tiene colas pesadas hacia la derecha (Default). Esto es consecuenacia de que si existen los eventos de default pero respresentan solo una pequeña parte de la muestra ( __0.13815%__ ).
+
+Porbamos con un Cutoff inicial pequeño para ver la predicción
+```{r}
+cut_off <- 0.0075
+
+## In Sample
+prob.modelo4.insample      <- predict(modelo4,train,type = "response")
+predicted.modelo4.insample <- (prob.modelo4.insample > cut_off)
+predicted.modelo4.insample <- as.numeric(predicted.modelo4.insample)
+```
+
+##### Matriz de Confusión 
+
+```{r, echo=FALSE}
+## Matriz de confusión
+##
+table(train$Default, predicted.modelo4.insample, dnn = c("Truth","Predicted"))
+```
+
+Con un cutoff mayor solo obtenemos predicciones de no Default
+
+```{r, echo=FALSE}
+cut_off <- 0.05
+
+## In Sample
+prob.modelo4.insample      <- predict(modelo4,train,type = "response")
+predicted.modelo4.insample <- (prob.modelo4.insample > cut_off)
+predicted.modelo4.insample <- as.numeric(predicted.modelo4.insample)
+## Matriz de confusión
+##
+table(train$Default, predicted.modelo4.insample, dnn = c("Truth","Predicted"))
+```
+
+Mientras disminuye el cutoff aumenta el número de defaults predichos (algunos correctamente y otros no) 
+
+```{r, echo=FALSE}
+cut_off <- 0.0005
+
+## In Sample
+prob.modelo4.insample      <- predict(modelo4,train,type = "response")
+predicted.modelo4.insample <- (prob.modelo4.insample > cut_off)
+predicted.modelo4.insample <- as.numeric(predicted.modelo4.insample)
+## Matriz de confusión
+##
+table(train$Default, predicted.modelo4.insample, dnn = c("Truth","Predicted"))
+```
+
+#### Buscando un nivel de cutoff óptimo
+
+##### Curva ROC
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE}
+## Curva ROC 
+##
+## OUT OF SAMPLE
+prob.modelo4.outsample      <- predict(modelo4, test, type = "response")
+predicted.modelo4.outsample <-  prob.modelo4.outsample > cut_off
+predicted.modelo4.outsample <- as.numeric(predicted.modelo4.outsample)
+
+
+pred <- prediction(prob.modelo4.outsample, test$Default)
+perf <- performance(pred, "tpr", "fpr")
+plot(perf, colorize = TRUE)
+unlist(slot(performance(pred, "auc"), "y.values"))
+```
+
+La curva ROC es un grafico que ilustra la habilidad diagnostica de un clasificador binario conforme cambia el unbral (i.e. conforme cambia el cutoff a partir del cual discriminamos entre 0 y 1). Mustra como se compensa el aumento en True Positive Rate (i.e. proporción de Verdaderos positivos entre el total de positivos en a muestra) contra el decremento (aumento) de la singularity (False positive Rate) para diferentes umbrales entre 0 y 1. La medida que se compara es el área bajo la curva ROC (también toma valores entre 0 y 1). En este caso obtuvimos un área bajo la curva de 0.6979985.
+
+La funcion ROC busca el óptimo valor del cutoff optimizando el __Accuracy__ (aciertos/total de datos). Pero no siempre es el caso.
+
+##### Función de costo simétrica.
+
+```{r}
+# Symmetric cost - minimizar los errores (i.e. maximizar el accuracy) falsos positivos y falsos negativos
+# in the cost function, both r and pi are vectors, r=truth, pi=predicted probability
+costoSim <- function(r, pi){
+  mean(((r == 0) & (pi > pcut)) | ((r == 1) & (pi < pcut)))
+}
+```
+
+cutoff optimo dada una funcion de costos simetrica:
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE}
+## Cutoff óptimo dado una funcion de costos  
+searchgrid = seq(0.001,0.5, 0.001)
+#
+result = cbind(searchgrid, NA)
+
+prob <- predict(glm.model,type = "response")
+
+for (i in 1:length(searchgrid))
+{
+  pcut <- result[i,1]
+  #assign the cost to the 2nd col
+  result[i,2] <- costoSim(train$Default, prob)
+}
+
+plot(result, main = "Optimizando Costo Simétrico", ylab = "Costo")
+result[which.min(result[,2]),]
+```
+
+
+##### Función de costo asimétrica.
+
+```{r}
+# Asymmetric cost
+# in the cost function, both r and pi are vectors, r=truth, pi=predicted probability
+costoAsim <- function(r, pi){
+  weight1 <- 2
+  weight0 <- 1
+  c1 <- (r == 1) & (pi < pcut) #logical vector - true if actual 1 but predict 0 false positive
+  c0 <- (r == 0) & (pi > pcut) #logical vector - true if actual 0 but predict 1
+  return(mean(weight1 * c1 + weight0 * c0))
+}
+```
+
+cutoff optimo dada una funcion de costos simetrica:
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE}
+## Cutoff óptimo dado una funcion de costos  
+searchgrid = seq(0.001,0.07, 0.001)
+#
+result = cbind(searchgrid, NA)
+
+prob <- predict(glm.model,type = "response")
+
+for (i in 1:length(searchgrid))
+{
+  pcut <- result[i,1]
+  #assign the cost to the 2nd col
+  result[i,2] <- costoAsim(train$Default, prob)
+}
+
+plot(result, main = "Optimizando Costo asimétrico", ylab = "Costo")
+result[which.min(result[,2]),]
+```
+
+En ambos casos obtenemos el mismo resultado: 0.013 parece ser el cutoff óptimo. Que este número sea tan bajo nos indica es que es mejor clasificar a todos como no default aunque no paguen debido a que son muy pocos en la muestra. Pero esto no es correcto y diverge del objetivo de esta práctica.
+
+Si tuvieramos más información sobre el costo de default y costo de no otorgar un prestamo a alguien que pagaría podriamos generar una función de costo más precisa que nos permitiría encontrar un mejor cutoff.
+
+#### Conclusiones
+
+Dado que la muestra está muy desbalanceada es complicado abordar la predicción de defaults bajo este método aunque con mayor conocimiento del negocio o con una función de costo bien definida podríamos mejorar el análisis.
+
+#### Referencias bibliograficas:
+
+* http://ethen8181.github.io/machine-learning/unbalanced/unbalanced.html#choosing-the-suitable-cutoff-value
+* http://manishbarnwal.com/blog/2017/05/18/choosing_probability_cut-off_in_classification/
+* file:///C:/Users/chema/Documents/CUNEF/Predicci%C3%B3n/Sesiones/Clase04.html
+* The case of Online P2p lending, Berger y Gleisner.
+*  Evaluating credit risk and loan performance in online Peer-to-Peer (P2P) lending Emekter, Tu, Jirasakuldech y Lu,
