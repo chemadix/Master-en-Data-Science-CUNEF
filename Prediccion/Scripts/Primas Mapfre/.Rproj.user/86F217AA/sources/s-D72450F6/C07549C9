@@ -1,0 +1,25 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1573685401679.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "C07549C9",
+    "lastKnownWriteTime" : 1573400742,
+    "last_content_update" : 1573400742,
+    "path" : "C:/Users/chema/Google Drive/Git/MasterDataScienceCUNEF/machine_learning_basics/5.PerceptronLearningRule.Rmd",
+    "project_path" : null,
+    "properties" : {
+        "cursorPosition" : "148,0",
+        "scrollLine" : "139"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 9,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_markdown"
+}

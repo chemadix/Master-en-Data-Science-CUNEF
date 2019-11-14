@@ -1,0 +1,26 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1573575436336.000,
+    "dirty" : false,
+    "encoding" : "",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "D60FBF29",
+    "lastKnownWriteTime" : 2178531315976,
+    "last_content_update" : 1573575436336,
+    "path" : null,
+    "project_path" : null,
+    "properties" : {
+        "id" : "61dc6e2b06d043ab9dcdede60095f20f",
+        "name" : "sep.fit",
+        "title" : "sep.fit"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 8,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "object_explorer"
+}
