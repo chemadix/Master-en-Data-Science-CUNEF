@@ -317,6 +317,11 @@ PerceptronFunction2(x, y)
 ### Ploting the Cost Funtion
 
 ```{r}
+set.seed(1)
+x1 <- runif(100,-1,1)
+x2 <- runif(100,-1,1)
+x <- cbind(x1,x2)
+y <- ifelse(x2 > 0.5 + x1, +1, -1)
 ## Calculating the cost function per iteration
 PerceptronFunction3 <- function(x, y, learning.rate = 1) {
   w = vector(length = ncol(x)) # initialize w
@@ -334,7 +339,7 @@ PerceptronFunction3 <- function(x, y, learning.rate = 1) {
         w <- w + learning.rate * y[i] * x[i,]
         b <- b + learning.rate * y[i] * R^2  ## como b es la constante, es la que mas mueve con respecto
         iterations <- iterations + 1         ##  al origen
-        costFunctionPerIteration <- c(costFunctionPerIteration, sum(y != yc))
+        costFunctionPerIteration <- c(costFunctionPerIteration, sum(y != ClassifyLinear(x, w, b)))
       }
     }
   }
@@ -345,6 +350,44 @@ return(costFunctionPerIteration)                                      ##   class
 plot(PerceptronFunction3(x, y), type = "l", ylab = "Cost Function", xlab = "Iteration", ylim = c(-1,max(PerceptronFunction3(x, y))))
 abline(h = 0, col = "red")
 ```
+
+
+```{r}
+set.seed(1)
+x1 <- runif(100,-1,1)
+x2 <- runif(100,-1,1)
+x <- cbind(x1,x2)
+y <- ifelse(x2 > 0.5 + x1, +1, -1)
+## Calculating the cost function per iteration
+PerceptronFunction3 <- function(x, y, learning.rate = 1) {
+  w = vector(length = ncol(x)) # initialize w
+  b = 0 # Initialize b
+  iterations = 0 # count iterations
+  R = max(apply(x, 1, EuclideanNorm))
+  convergence = FALSE # to enter the while loop
+  costFunctionPerIteration <- c() # initialize cost function
+  while (!convergence) {
+    convergence = TRUE # hopes luck
+    yc <- ClassifyLinear(x, w, b)
+    for (i in 1:nrow(x)) {
+      if (y[i] != yc[i]) {
+        convergence <- FALSE
+        w <- w + learning.rate * y[i] * x[i,]
+        b <- b + learning.rate * y[i] * R^2  ## como b es la constante, es la que mas mueve con respecto
+        iterations <- iterations + 1         ##  al origen
+        costFunctionPerIteration <- c(costFunctionPerIteration, sum(y != ClassifyLinear(x, w, b)))
+        yc <- ClassifyLinear(x, w, b)
+      }
+    }
+  }
+costFunctionPerIteration <- c(costFunctionPerIteration, sum(y != yc)) ## once every point is correclty
+return(costFunctionPerIteration)                                      ##   classified
+}
+
+plot(PerceptronFunction3(x, y), type = "l", ylab = "Cost Function", xlab = "Iteration", ylim = c(-1,max(PerceptronFunction3(x, y))))
+abline(h = 0, col = "red")
+```
+
 
 3. Try another example with new random data (please, do not use the iris data). Use a *complex* dataset looking for a non-completely linearly separated sample. 
 
