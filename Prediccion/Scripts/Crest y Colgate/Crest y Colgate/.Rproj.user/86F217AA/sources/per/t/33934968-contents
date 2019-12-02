@@ -1,0 +1,322 @@
+########################################################################################################
+## Start Date: 16/11/2019
+## End Date:   20/11/2019
+## Author:     José María Álvarez Silva
+## School:     CUNEF
+## Class:      Clasification Techniques
+## Assigment:  Tarea 2
+## Language:   Spanish
+##
+########################################################################################################
+## Técnicas de clasificación
+########################################################################################################
+## Tarea 2 #############################################################################################
+##     Regresion lógistica
+
+## Propósito ###########################################################################################
+##     Se adjunta un fichero con datos obtenidos de la Encuesta de Presupuesto Familiares 2018, 
+##     relativos a hogares que tienen contratado seguros de salud privados (1) o no (0) y un conjunto 
+##     de variables explicativas cuya descripción aparece en una de las hojas del fichero excel. Deben 
+##     plantear un modelo de regresión logística justificando teóricamente el modelo y pudiendo 
+##     recodificar (muy recomendable en algunas de ellas) algunas de las variables explicativas 
+##     incluídas. 
+
+## Paquetes ############################################################################################
+##
+library(ggplot2)
+library(dplyr)
+library(corrplot)
+library(gridExtra)
+library(ggpubr)
+library(car)
+library(MASS)
+library(skimr)
+library(pscl)
+library(ROCR)
+
+## Dataset #############################################################################################
+##
+datos <- read.csv("datos.csv")
+
+## Diccionario de datos
+##
+
+#|Fichero de   hogar | Descripción   de la variable                                                     |
+#|--------------------|---------------------------------------------------------------------------------|
+#| ANOENC             | Año de la encuesta                                                              |
+#                         - Año 2018
+#| NUMERO             | Número secuencial que indica el orden del hogar en el fichero                   |
+#                         - Indice
+#| TAMAMU             | Tamaño del municipio                                                            |
+#                         - valores de 1 a 5 grupos (ordinal encoding)
+#| NMIEMB             | Número de miembros del hogar                                                    |
+#                         - valores de 1 a 11 miembros (ordinal)                          
+#| NMIEM2             | Número de miembros del hogar menores de 14 años                                 |
+#                         - valores de 0 a 7 (ordinal)
+#| NUMOCU             | Número de miembros ocupados en el hogar                                         |
+#                         - valores en {-9, 0, 1, 2, 3, 4, 5, 6}
+#                         - solo 13 observaciones toman el valor de -9
+#| NUMNOCU            | Número de miembros no ocupados en el   hogar                                    |
+#                         - OJO con el nombre de las variables (NUMOCUP)
+#| TIPHOGAR2          | Tipo de hogar (segunda   clasificación)                                         |
+#                         - valores en {-9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+#                         - solo 13 observaciones toman el valor de -9
+#                         - son las mismas observaciones que el caso anterior
+#| EDADSP             | Edad (calculada a fecha de cumplimentación de la ficha de hogar)                |
+#                         - valores 19 a 85
+#| SEXOSP             | Sexo                                                                            |
+#                         - valores 1 y 6 (variable dicotómica)
+#| ESTUDREDSP         | Estudios completados reducida                                                   |
+#                         - valores enteros entre 1 y 4
+#| OCUSP              | ¿Estaba el sustentador principal ocupado en la semana anterior a la entrevista? |
+#                         - valores 1 y 2
+#| INTERINPSP         | Intervalo de ingresos mensuales netos totales del sustentador principal         |
+#                         - valores en {-9, 1, 2, 3, 4, 5, 6, 7}
+#                         - son 733 observaciones toman el valor de -9
+#                         - no coiniden con los -9 anteriores
+#                         - NAs 140
+#| REGTEN             | Régimen de tenencia                                                             |
+#                         - valores enteros de 1 a 6 (variable dicotómica)
+#| SUPERF             | Superficie útil de la vivienda                                                  |
+#                         - valores continuos (casi)
+#                         - son 539 observaciones toman el valor de -9
+#                         - no coiniden con los -9 anteriores
+#| INTERIN            | Intervalo de ingresos mensuales netos totales del hogar                         |
+#                         - valores de 1 a 10 (categorias - ordinal)
+#|                    |                                                                                 |
+
+## Añadir seguro salud
+
+## Funciones #########################################################################################
+##
+
+analisisGrafico <- function(data, Character, column, binw = 1){
+  
+  data <- data[,c(1,column)]
+  colnames(data) <- c("TIPO", "I")
+  
+  p1 <- ggplot(data = data) +
+    geom_boxplot(aes(TIPO, I, color = TIPO)) +
+    ylab(Character) + xlab("") +
+    theme(axis.text.x = element_text(angle = 90))
+  p2 <- ggplot(data = data, aes(I)) +
+    geom_histogram(aes(y = ..density.., fill = ..count..), binwidth = binw, color = "white") +
+    xlab(Character) +
+    geom_density(fill = "steelblue", alpha = 0.5, color = "white") + 
+    theme(legend.position = "None") 
+  p3 <- ggplot(data = data, aes(color = TIPO, fill = TIPO)) +
+    geom_density(data = (filter(data, TIPO == 0)), aes(I), alpha = 0.5) +
+    geom_density(data = (filter(data, TIPO == 1)), aes(I), alpha = 0.5) +
+    xlab(Character) + 
+    theme(legend.position = "None")
+  
+  grid.arrange(
+    p1, p2, p3,
+    widths = c( 1, 1),
+    top = text_grob(Character),
+    layout_matrix = rbind(c(1, 2),
+                          c(1, 3))
+  )
+}
+
+getmode <- function(v) {
+  uniqv <- unique(v)
+  uniqv[which.max(tabulate(match(v, uniqv)))]
+}
+
+## Análisis exploratorio de datos ####################################################################
+##
+str(datos)
+skim(datos)
+
+## Data ser balanceado
+##
+sum(datos$Seguro_salud)/nrow(datos)
+## solamente el 9.11% de los casos tienen un seguro contratado
+
+## sólo una variable contiene NAs
+## - 0.654% de los datos son NA
+datos$INTERINPSP[is.na(datos$INTERINPSP)] <- getmode(datos$INTERINPSP)
+
+## Existe el caso de que algunas de las variables tomen el valor -9
+##  - este valor indica que la respuesta a cierta pregunta no consta
+##  - en lugar de eliminar las filas, cambiaremos los valores por la media y la moda
+##      según sea el caso
+datos$SUPERF[datos$SUPERF == -9] <- mean(datos$SUPERF, na.rm = T)
+datos$NUMOCUP[datos$NUMOCUP == -9] <- getmode(datos$NUMOCUP)
+datos$TIPHOGAR3[datos$TIPHOGAR3 == -9] <- getmode(datos$TIPHOGAR3)
+datos$INTERINPSP[datos$INTERINPSP == -9] <- getmode(datos$INTERINPSP)
+
+
+## Data ser balanceado
+##
+sum((datos$Seguro_salud))/nrow(datos)
+## solamente el 9.11% de los casos tienen un seguro contratado
+
+## Data wrangling ####################################################################################
+##
+
+## Cambiar los valores de variables dicotómicas
+## Sexo (hombre = 1, mujer = 0)
+datos$SEXOSP <- sapply(datos$SEXOSP, function(x){ifelse(x == 6,0,1)})
+## Sexo (si = 1, no = 0)
+datos$OCUSP <- sapply(datos$OCUSP, function(x){ifelse(x == 2,0,1)})
+
+## No necesitamos las variables ANOENC y NUMERO
+datos <- datos[,-c(1,2)]
+
+## Factores
+datos$Seguro_salud <- factor(datos$Seguro_salud, levels = c(0,1))
+datos$SEXOSP       <- factor(datos$SEXOSP, levels = c(0,1))
+datos$OCUSP        <- factor(datos$OCUSP, levels = c(0,1))
+
+skim(datos)
+## Descripción de variables ##########################################################################
+##
+
+## TAMAMU
+analisisGrafico(datos, "Tamaño del Municipio", 2)
+table(datos$Seguro_salud, datos$TAMAMU)
+round(prop.table(table(datos$Seguro_salud, datos$TAMAMU)),4)
+
+## NMIEMB
+analisisGrafico(datos, "Número de miembros del hogar", 3)
+table(datos$Seguro_salud, datos$NMIEMB)
+round(prop.table(table(datos$Seguro_salud, datos$NMIEMB)),4)
+
+## NMIEM2
+analisisGrafico(datos, "Miembros del hogar menores de 14 años", 4)
+table(datos$Seguro_salud, datos$NMIEM2)
+round(prop.table(table(datos$Seguro_salud, datos$NMIEM2)),4)
+
+## NUMOCUP
+analisisGrafico(datos, "Número de miembros ocupados en el hogar", 5)
+table(datos$Seguro_salud, datos$NUMOCUP)
+round(prop.table(table(datos$Seguro_salud, datos$NUMOCUP)),4)
+
+## TIPHOGAR3
+analisisGrafico(datos, "Tipo de hogar", 6)
+table(datos$Seguro_salud, datos$TIPHOGAR3)
+round(prop.table(table(datos$Seguro_salud, datos$TIPHOGAR3)),4)
+
+## EDADSP
+analisisGrafico(datos, "Edad", 7)
+
+## SEXOSP
+table(datos$Seguro_salud, datos$SEXOSP)
+round(prop.table(table(datos$Seguro_salud, datos$SEXOSP)),4)
+
+## ESTUDREDSP
+analisisGrafico(datos, "Estudios completados reducida", 9)
+table(datos$Seguro_salud, datos$ESTUDREDSP)
+round(prop.table(table(datos$Seguro_salud, datos$ESTUDREDSP)),4)
+
+## OCUSP
+table(datos$Seguro_salud, datos$OCUSP)
+round(prop.table(table(datos$Seguro_salud, datos$OCUSP)),4) 
+
+## INTERINPSP
+analisisGrafico(datos, "Int. de ingr mensuales del sustentador principal", 11)
+table(datos$Seguro_salud, datos$INTERINPSP)
+round(prop.table(table(datos$Seguro_salud, datos$INTERINPSP)),4)
+
+## REGTEN
+analisisGrafico(datos, "Régimen de tenencia", 12)
+table(datos$Seguro_salud, datos$REGTEN)
+round(prop.table(table(datos$Seguro_salud, datos$REGTEN)),4)
+
+## SUPERF
+analisisGrafico(datos, "Superficie útil de la vivienda", 13, binw = 10)
+
+## INTERIN
+analisisGrafico(datos, "Intervalo de ingresos mensuales del hogar", 14)
+table(datos$Seguro_salud, datos$INTERIN)
+round(prop.table(table(datos$Seguro_salud, datos$INTERIN)),4)
+
+## Matrix de correlaciones de variables numericas y ordinales
+corrplot(cor(datos[,-c(1,8,10)]))
+
+## Justificación teórica del modelo ##################################################################
+##
+
+## Modelo ############################################################################################
+##
+set.seed(131822)
+train_ind <- sample(seq_len(nrow(datos)), size = floor(nrow(datos)*.8))
+
+train <- datos[train_ind,]
+test  <- datos[-train_ind,]
+
+## muestras balanceadas
+## - 9.114279%
+length(which(train$Seguro_salud == 1))/nrow(train)
+length(which(test$Seguro_salud == 1))/nrow(test)
+## relativamente similares
+
+
+## Modelo
+modelo <- glm(data = train, Seguro_salud ~ ., family = binomial(link = 'logit'))
+
+## By using function summary() we obtain the results of our model:
+
+summary(modelo)
+exp(coef(modelo)) ## Odds analisis per unit (exp(bi*1))
+
+anova(modelo, test = "Chisq")
+
+## R^2 de McFadden
+pR2(modelo)
+
+## Test
+fitted.results <- predict(modelo, newdata = test[,-1], type = 'response')
+fitted.results <- ifelse(fitted.results > 0.5,1,0)
+
+logit.perf <- table(test$Seguro_salud, fitted.results, dnn = c("Actual", "Predicted"))
+
+logit.perf
+
+misClasificError <- mean(fitted.results != test$Seguro_salud)
+print(paste('Accuracy',1 - misClasificError))
+
+## Curva ROC
+
+pred <- prediction(predict(modelo, newdata = test[,-1], type = 'response'), test$Seguro_salud)
+perf <- performance(pred, "tpr", "fpr")
+plot(perf, colorize = TRUE)
+unlist(slot(performance(pred, "auc"), "y.values"))
+
+## Optim Cutoff
+# Symmetric cost - minimizar los errores (i.e. maximizar el accuracy) falsos positivos y falsos negativos
+# in the cost function, both r and pi are vectors, r=truth, pi=predicted probability
+costoSim <- function(r, pi){
+  mean(((r == 0) & (pi > pcut)) | ((r == 1) & (pi < pcut)))
+}
+
+modeloTotal <- glm(data = train, Seguro_salud ~ ., family = binomial(link = 'logit'))
+
+## Cutoff óptimo dado una funcion de costos  
+searchgrid = seq(0.01,1, 0.01)
+#
+result = cbind(searchgrid, NA)
+
+prob <- predict(modeloTotal, type = "response")
+
+for (i in 1:length(searchgrid))
+{
+  pcut <- result[i,1]
+  #assign the cost to the 2nd col
+  result[i,2] <- costoSim(train$Seguro_salud, prob)
+}
+
+plot(result, main = "Optimizando Costo Simétrico", ylab = "Costo")
+result[which.min(result[,2]),]
+## Cutoff óptimo .54
+## Test
+fitted.results <- predict(modelo, newdata = test[,-1], type = 'response')
+fitted.results <- ifelse(fitted.results > 0.54,1,0)
+
+logit.perf <- table(test$Seguro_salud, fitted.results, dnn = c("Actual", "Predicted"))
+
+logit.perf
+misClasificError <- mean(fitted.results != test$Seguro_salud)
+print(paste('Accuracy',1 - misClasificError))

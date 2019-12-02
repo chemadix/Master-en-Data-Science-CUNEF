@@ -1,0 +1,9 @@
+{
+    "path" : "~/CUNEF/Predicción/VAR GDP Inflation",
+    "sortOrder" : [
+        {
+            "ascending" : true,
+            "columnIndex" : 2
+        }
+    ]
+}

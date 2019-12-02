@@ -1,0 +1,5 @@
+"0","Data = inner_join(tibble(Date = time(Growth), Growth = coredata(Growth)), "
+"0","                   tibble(Date = time(CPI), CPI = coredata(CPI)), by = c(""Date"")) %>% "
+"0","  mutate(Inflation = 100 * (CPI/lag(CPI) - 1)) %>%"
+"0","  select(Date, Growth, Inflation) %>% "
+"0","  drop_na() # Drop missing obs to balance dataset"

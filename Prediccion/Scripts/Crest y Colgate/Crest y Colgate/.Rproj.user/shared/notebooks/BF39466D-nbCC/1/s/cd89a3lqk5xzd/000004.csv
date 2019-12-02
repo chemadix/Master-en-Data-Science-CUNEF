@@ -1,0 +1,8 @@
+"0","#crestArimaxMatrix <- matrix(c(fcrest_arimax$mean[1:16], as.double(tail(logcrest,16))), ncol = 2)"
+"0","#crestArimaxMatrix"
+"0","## MSE"
+"0","#mean((crestArimaxMatrix[,1] - crestArimaxMatrix[,2])^2)"
+"0","## MAE"
+"0","#mean(abs(crestArimaxMatrix[,1] - crestArimaxMatrix[,2]))"
+"0","## Bias"
+"0","#mean(crestArimaxMatrix[,1] - crestArimaxMatrix[,2])"

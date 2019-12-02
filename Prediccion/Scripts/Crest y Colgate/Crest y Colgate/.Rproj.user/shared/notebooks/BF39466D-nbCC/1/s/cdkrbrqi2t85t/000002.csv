@@ -1,0 +1,4 @@
+"0","## Colgate ARIMAX #####################################################################################"
+"0",""
+"0","pulseFColgate <- data.frame(ADA = 1*(seq(logcolgate) == which(datos$Date == ""1960-08-01"")))[,1]"
+"0","plot(pulseFColgate)"

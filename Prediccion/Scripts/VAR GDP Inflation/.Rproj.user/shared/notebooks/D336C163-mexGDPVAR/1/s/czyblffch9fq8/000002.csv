@@ -1,0 +1,3 @@
+"0","series = c('MEXCPIALLQINMEI', 'NAEXKP01MXQ657S') # FRED codes for US GDP growth and CPI"
+"0","CPI    = getSymbols(series[1], src = 'FRED', auto.assign = FALSE)"
+"0","Growth = getSymbols(series[2], src = 'FRED', auto.assign = FALSE)"

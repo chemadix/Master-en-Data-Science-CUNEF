@@ -1,0 +1,25 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1574350137103.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "2438674087",
+    "id" : "F32781F4",
+    "lastKnownWriteTime" : 1573686241,
+    "last_content_update" : 1573686241,
+    "path" : "~/CUNEF/Predicción/Primas Mapfre/nbPrimas.Rmd",
+    "project_path" : null,
+    "properties" : {
+        "cursorPosition" : "88,0",
+        "scrollLine" : "0"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_markdown"
+}
