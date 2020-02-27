@@ -1,0 +1,33 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1573556588431.000,
+    "dirty" : false,
+    "encoding" : "",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "D7EAE177",
+    "lastKnownWriteTime" : 2361836286064,
+    "last_content_update" : 1573556588431,
+    "path" : null,
+    "project_path" : null,
+    "properties" : {
+        "cacheKey" : "956D8177",
+        "caption" : "Ventas",
+        "contentUrl" : "grid_resource/gridviewer.html?env=&obj=Ventas&cache_key=956D8177",
+        "displayedObservations" : 98,
+        "environment" : "",
+        "expression" : "Ventas",
+        "object" : "Ventas",
+        "preview" : 0,
+        "totalObservations" : 98,
+        "variables" : 1
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 3,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_dataframe"
+}

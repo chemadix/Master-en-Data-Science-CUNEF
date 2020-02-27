@@ -1,0 +1,277 @@
+---
+title: "Los Pájaros de Bumpus"
+author: "José María Álvarez Silva"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+# Objetivo
+
+Sin poner en tela de juicio el modelo darwiniano de evolución de las especies, que era lo pretendido por Bumpus en su artículo original, su trabajo consiste en identificar cuáles son las principales dimensiones que explican las relaciones entre las distintas variables, así como segmentar los pájaros en grupos homogéneos. Como científico de datos, tiene completa libertad para explorar como desee el conjunto de observaciones, así como la obligación de justificar todas las hipótesis que utilice en su trabajo. El informe deberá constar de tres partes: justificación del trabajo e hipótesis fundamentales; análisis exploratorio de datos; conclusiones, claras y precisas. No es necesario, en esta ocasión, efectuar referencias a otros trabajos.
+
+Deberá entregar un archivo en formato pdf producido en RMarkdown; el trabajo debe ser reproducible y, en consecuencia, __todo el código empleado deberá estar presente__. 
+
+## Paquetes
+```{r, warning=FALSE, message=FALSE}
+library(ggplot2)
+library(corrplot)
+library(dplyr)
+library(gridExtra)
+library(ggpubr)
+library(skimr)
+library(factoextra)
+library(FactoMineR)
+library(tree)
+library(rpart)
+library(rpart.plot)
+```
+
+## Funciones
+
+```{r, warning=FALSE, message=FALSE}
+## Funcion Graficar
+analisisGrafico <- function(data, Character, column, binw = 1){
+  
+  data <- data[,c(1,column)]
+  colnames(data) <- c("Superv", "I")
+  
+  p1 <- ggplot(data = data) +
+    geom_boxplot(aes(Superv, I, color = Superv)) +
+    ylab(Character) + xlab("") +
+    theme(axis.text.x = element_text(angle = 90))
+  p2 <- ggplot(data = data, aes(I)) +
+    geom_histogram(aes(y = ..density.., fill = ..count..), binwidth = binw, color = "white") +
+    xlab(Character) +
+    geom_density(fill = "steelblue", alpha = 0.5, color = "white") + 
+    theme(legend.position = "None") 
+  p3 <- ggplot(data = data, aes(color = Superv, fill = Superv)) +
+    geom_density(data = (filter(data, Superv == 1)), aes(I), alpha = 0.5) +
+    geom_density(data = (filter(data, Superv == 0)), aes(I), alpha = 0.5) +
+    xlab(Character) + 
+    theme(legend.position = "None")
+  
+  grid.arrange(
+    p1, p2, p3,
+    widths = c( 1, 1),
+    top = text_grob(Character),
+    layout_matrix = rbind(c(1, 2),
+                          c(1, 3))
+  )
+}
+```
+## Hipótesis 1
+
+Podré encontar la caractrísticas que me perimtan reducir la dimesnion y segmentar en grupos de supervivencia y no.
+
+
+
+
+## Lectura de datos
+```{r, warning=FALSE, message=FALSE}
+datos <- read.csv("bumpus.txt", sep = "")
+```
+
+### Trabajar con Supervivencia como Factor
+```{r, warning=FALSE, message=FALSE}
+datos$survive <- factor(datos$survive)
+```
+
+### Diccionario de Datos
+
+|                                    	| Variable         	| Unidad de Medida 	|
+|------------------------------------	|------------------	|------------------	|
+| supervivencia                      	| variable survive 	| 1 = sí, 0 = no   	|
+| longitud total                     	| length           	| mm               	|
+| extensión alar                     	| alar             	| mm               	|
+| peso                               	| weight           	| g                	|
+| longitud del pico y cabeza         	| lbh              	| mm               	|
+| longitud del húmero                	| lhum             	| in               	|
+| longitud del fémur                 	| lfem             	| in               	|
+| longitud de la tibia               	| ltibio           	| in               	|
+| ancho del cráneo                   	| wskull           	| in               	|
+| longitud de la quilla del esternón 	| lkeel            	| in               	|
+
+# Justificación del Trabajo e Hipótesis Fundamentales
+
+## Componentes Principales
+
+Identificar cuáles son las principales dimensiones que explican las relaciones entre las distintas variables a través de análisis de componentes principales. Este análisis nos permite explicar la varianza de las variables a través de variables artificiales (componentes) que maximizan la variabilidad explicada en orden descendiente (i.e. la primera componente es la que más explica, la segunda la que más explica de resto y así sucesivamente). Intentar reducir la dimensión y explicar con menos variables.
+
+### Correlación entre Variables
+
+```{r, warning=FALSE, message=FALSE}
+corrplot(corr = cor(datos[,-1]), order = "hclust", addrect = 3)
+```
+
+#### Determinante de la matriz de correlaciones
+
+```{r, warning=FALSE, message=FALSE}
+det(cor(datos[,-1])) == 0
+```
+
+Prudente al análisis de componentes principales:
+
+### ACP
+
+```{r, warning=FALSE, message=FALSE}
+pajarosACP <- PCA(datos[,-1])
+```
+
+La Primera componente explica el 40.48% de la varianza y la segunda el 12.75%. Es decir, con las primeras dos componentes logramos explicar el 53.56% de la varianza. Como se observa en el segundo gráfico, ninguna variable es explicada al 100% por las primeras dos componentes (ninguna flecha alcanza a la circunferencia); además, parace que hay tres grupos de variables: el primero compuesto por `lbh` (longitud del pico y cabeza); el segundo, un grupo que contiene a `ltibio` (longitud de la tibia), `lhum` (longitud del húmero), `lfem` (longitud del fémur), `alar`(extensión alar) y `lkeel`(longitud de la quilla del esternón); por último, un grupo compuesto por `weight` (weight), `wskull`(ancho del cráneo) y `length`(longitud total). (Estos grupos vuelven a aparecer como al analizar la correlación entre las Variables)
+
+
+```{r, warning=FALSE, message=FALSE}
+pajarosACP$var$cos2
+```
+
+Al observar el grafico de sedimentación (scree plot), con un threshold de 11.11% (1/9; tenemos 9 variables), solo es superado por las primeras tres componentes por la regla de Kaiser. Las subsecuentes componentes solo logran explicar muy poco de la variabilidad restante. Por otra parte, se denomina "comunalidad" a la proporción de la varianza explicada por los factores comunes en una variable. Al observar los cos2 (comunalidad) resultantes del análisis de componentes principales, se logra apreciar que la primera dimensión se explica gran parte del segundo grupo que contiene a `ltibio` (longitud de la tibia), `lhum` (longitud del húmero), `lfem` (longitud del fémur), `alar`(extensión alar) y `lkeel`(longitud de la quilla del esternón) y la segunda explica al resto.
+
+Deberíamos de ser capaces de reducir la dimensión y utilizar las tres primeras componentes (explican 65.9% de la varianza) para explicar y segmentar entre supervivencia o no supervivencia. Si estás variables están muy correlacionadas, lo que explica una explica al resto de grupo. Por lo tanto, puede que sea posible segmentar los grupos de pájaros utilizando una característica de cada grupo de variables (i.e. utilizar dos o tres variables para segmentar a los pájaros que sobrevivieron y a los que no).
+
+```{r}
+fviz_eig(pajarosACP, addlabels = TRUE, hjust = -0.3) +
+  labs(title = "Scree plot / Gráfico de sedimentación",
+       x = "Dimensiones", y = "% Varianza explicada") +
+  theme_minimal() + geom_hline(yintercept = 100/9, linetype = "dashed", color = "red")
+```
+
+
+```{r}
+fviz_pca_biplot(pajarosACP, addEllipses = TRUE, ellipse.level = .95)
+```
+
+## Segmentacion 
+
+
+### Arbol de Clasificación
+
+```{r}
+## Árbol
+
+treeBumpus <- rpart(survive ~ ., data = datos, method = "class",
+                    parms = list(split = "information"))
+
+prp(treeBumpus, type = 2, extra = 104,
+    fallen.leaves = TRUE, main = "Decision Tree")
+
+## Podado del arbol - no hay necesidad de podar el árbol ya el minino xerror + xstd (correspondiente)
+##  no supera al siguente xerror.
+```
+
+
+# Análisis Exploratorio de Datos
+
+Para tener las medidas de longitud en las mismas unidades, transformaremos las variables medidas en in a mm (1 in = 25.4mm)
+
+```{r, warning=FALSE, message=FALSE}
+## Variables 6, 7, 8, 9 y 10 medidas en in
+datos[, 6:10] <- datos[, 6:10] * 25.4
+```
+
+## Diccionario de Datos
+
+|                                    	| Variable         	| Unidad de Medida 	|
+|------------------------------------	|------------------	|------------------	|
+| supervivencia                      	| variable survive 	| 1 = sí, 0 = no   	|
+| longitud total                     	| length           	| mm               	|
+| extensión alar                     	| alar             	| mm               	|
+| peso                               	| weight           	| g                	|
+| longitud del pico y cabeza         	| lbh              	| mm               	|
+| longitud del húmero                	| lhum             	| mm               	|
+| longitud del fémur                 	| lfem             	| mm               	|
+| longitud de la tibia               	| ltibio           	| mm               	|
+| ancho del cráneo                   	| wskull           	| mm               	|
+| longitud de la quilla del esternón 	| lkeel            	| mm               	|
+
+### Primer vistazo a los datos
+
+```{r, warning=FALSE, message=FALSE}
+##skim(datos)
+```
+
+
+## Relación de las Variables con la Supervivencia.
+
+Buscaremos encontrar características heterogéneas en grupos homogéneos. A través de observar comportamiento multimodal en las distribuciones muestrales, existencia de colas pesadas (posibles grupos con valores extremos que nos permite segmentar grupos) y observar las distribuciones muestrales de cada característica dependiendo de si sobrevivieron o no. Esto nos dará una guía de que variables nos pueden servir para segmentar.
+
+### Longitud Total
+
+El BarPlot nos muestra que las masas de probabilidad son claramente distinguibles, los pájaros que sobrevivieron tienen una Longitud total menor (en promedio) a la de los pájaros que no sobrevivieron. Si observamos la distribución muestral parecería ser homogénea, unimodal y con colas pesadas, mostrando un posible grupo en valores extremos altos. Por otro lado, al observar las distribuciones muéstrales por grupo (Supervivencia) se muestran dos modas y dos medias distintas además de un grupo claro en cada cola: no supervivencia en la cola derecha y supervivencia en la cola izquierda. Puede servir para segmentar.
+
+```{r, warning=FALSE, message=FALSE}
+analisisGrafico(data = datos, Character = "Longitud Total (mm)", column = 2)
+```
+
+### Extensión Alar
+
+El BarPlot nos muestra que las masas de probabilidad no son claramente distinguibles, los pájaros que sobrevivieron tienen una Extensión Alar similar (en promedio) a la de los pájaros que no sobrevivieron. Si observamos la distribución muestral parecería ser homogénea, unimodal y con colas pesadas, mostrando un posible grupo en valores extremos altos. Por otro lado, al observar las distribuciones muéstrales por grupo (Supervivencia) un grupo parece dominar la cola derecha pero no es tan claro además las medias y las modas no se ven muy diferentes por grupo. No debe ser muy útil para segmentar.
+
+```{r, warning=FALSE, message=FALSE}
+analisisGrafico(data = datos, Character = "Extensión Alar (mm)", column = 3, binw = 1)
+```
+
+### Peso
+
+El BarPlot nos muestra que las masas de probabilidad no son claramente distinguibles, los pájaros que sobrevivieron tienen una Peso similar (en promedio) a la de los pájaros que no sobrevivieron. Si observamos la distribución muestral parecería ser homogénea, unimodal y con colas pesadas, mostrando un posible grupo en valores extremos altos. Por otro lado, al observar las distribuciones muéstrales por grupo (Supervivencia) un grupo parece dominar la cola derecha pero no es tan claro además las medias y las modas no se ven muy diferentes por grupo. No debe ser muy útil para segmentar.
+
+```{r, warning=FALSE, message=FALSE}
+analisisGrafico(data = datos, Character = "Peso (g)", column = 4)
+```
+
+### Longitud del pico y cabeza
+
+El BarPlot nos muestra que las masas de probabilidad no son claramente distinguibles, los pájaros que sobrevivieron tienen una Longitud del pico y cabeza similar (en promedio) a la de los pájaros que no sobrevivieron. Si observamos la distribución muestral parecería ser heterogénea, bimodal y con colas pesadas, mostrando un posible grupo en valores extremos altos. Por otro lado, al observar las distribuciones muéstrales por grupo (Supervivencia) un grupo parece dominar cada cola pero no es tan claro, además las medias y las modas no se ven muy diferentes por grupo. No debe ser muy útil para segmentar.
+
+```{r, warning=FALSE, message=FALSE}
+analisisGrafico(data = datos, Character = "Longitud del pico y cabeza (mm)", column = 5)
+```
+
+### longitud del húmero
+
+El BarPlot nos muestra que las masas de probabilidad no son claramente distinguibles, los pájaros que sobrevivieron tienen una Longitud del húmero similar (en promedio) a la de los pájaros que no sobrevivieron. Si observamos la distribución muestral parecería ser heterogénea, bimodal y con colas pesadas, mostrando un posible grupo en valores extremos altos. Por otro lado, al observar las distribuciones muéstrales por grupo (Supervivencia) un grupo parece dominar cada cola pero no es tan claro, además las medias y las modas no se ven muy diferentes por grupo. No debe ser muy útil para segmentar.
+
+```{r, warning=FALSE, message=FALSE}
+analisisGrafico(data = datos, Character = "Longitud del húmero (mm)", column = 6)
+```
+
+### Longitud del fémur
+
+El BarPlot nos muestra que las masas de probabilidad son claramente distinguibles, los pájaros que sobrevivieron tienen una Longitud del fémur mayor (en promedio) a la de los pájaros que no sobrevivieron. Si observamos la distribución muestral parecería ser homogénea, bimodal y con colas pesadas, mostrando un posible grupo en valores extremos altos. Por otro lado, al observar las distribuciones muéstrales por grupo (Supervivencia) se muestran dos modas y dos medias similares, además de un grupo claro en cada cola: no supervivencia en la cola izquierda y supervivencia en la cola derecha. Podría servir para segmentar pero existe un problema con la diferencia de medias y modas.
+
+```{r, warning=FALSE, message=FALSE}
+analisisGrafico(data = datos, Character = "Longitud del fémur (mm)", column = 7)
+```
+
+### Longitud de la tibia
+
+El BarPlot nos muestra que las masas de probabilidad no son claramente distinguibles, los pájaros que sobrevivieron tienen una Longitud de la tibia similar (en promedio) a la de los pájaros que no sobrevivieron. Si observamos la distribución muestral parecería ser heterogénea, bimodal y con colas pesadas, mostrando un posible grupo en valores extremos altos. Por otro lado, al observar las distribuciones muéstrales por grupo (Supervivencia) un grupo parece dominar cada cola pero no es tan claro, además las medias y las modas no se ven muy diferentes por grupo. No debe ser muy útil para segmentar.
+
+```{r, warning=FALSE, message=FALSE}
+analisisGrafico(data = datos, Character = "Longitud de la tibia (mm)", column = 8)
+```
+
+### Ancho del Cráneo
+
+El BarPlot nos muestra que las masas de probabilidad no son claramente distinguibles, los pájaros que sobrevivieron tienen una Ancho del Cráneo similar (en promedio) a la de los pájaros que no sobrevivieron. Si observamos la distribución muestral parecería ser heterogénea, unimodal y con colas pesadas, mostrando un posible grupo en valores extremos altos. Por otro lado, al observar las distribuciones muéstrales por grupo (Supervivencia) un grupo parece dominar cada cola pero no es tan claro, además las medias y las modas no se ven muy diferentes por grupo. No debe ser muy útil para segmentar.
+
+```{r, warning=FALSE, message=FALSE}
+analisisGrafico(data = datos, Character = "Longitud de la tibia (mm)", column = 9)
+```
+
+### Longitud de la quilla del esternón
+
+El BarPlot nos muestra que las masas de probabilidad no son claramente distinguibles, los pájaros que sobrevivieron tienen una Ancho del Cráneo similar (en promedio) a la de los pájaros que no sobrevivieron. Si observamos la distribución muestral parecería ser heterogénea, unimodal y con colas pesadas, mostrando un posible grupo en valores extremos altos. Por otro lado, al observar las distribuciones muéstrales por grupo (Supervivencia) un grupo parece dominar cada cola pero no es tan claro, además las medias y las modas no se ven muy diferentes por grupo. No debe ser muy útil para segmentar.
+
+```{r, warning=FALSE, message=FALSE}
+analisisGrafico(data = datos, Character = "Longitud de la quilla del esternón (mm)", column = 10)
+```
+
+# Conclusiones
+
+Después del análisis se determinó que se puede segmentar los grupos de pájaros sobrevivientes y no supervivientes por dos variables únicamente. Con las variables `lfem` (longitud del fémur) y `length` (longitud total). Cada una importante en las cada una de las primeras componentes (respectivamente); además, confirma lo observado en el árbol de clasificación y el análisis exploratorio de datos.
+
+```{r}
+ggplot(datos) + geom_point(aes(x = lfem, y = length, colour = survive))
+```
+

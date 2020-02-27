@@ -1,0 +1,2 @@
+"0",""
+"0","plot(forecast(colgate.train.arima, h = 16), xlim = c(-2800, -2420), ylim = c(-2,0))"

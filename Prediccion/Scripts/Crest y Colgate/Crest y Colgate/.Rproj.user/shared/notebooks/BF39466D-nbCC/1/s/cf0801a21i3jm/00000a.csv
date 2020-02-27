@@ -1,0 +1,2 @@
+"0",""
+"0","fcrest_arima <- forecast(crest.train.arima, h = 16) ## predecimos 16 semanas"

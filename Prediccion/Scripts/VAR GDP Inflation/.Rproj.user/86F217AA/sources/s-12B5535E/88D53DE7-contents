@@ -1,0 +1,905 @@
+---
+title: "Primas Mapfre"
+author: "José María Álvarez Silva"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+Predicción
+
+# Propósito
+
+Predicción del número de primas total, vida y no vida por separado para después sumar y comparar. Realizar un análisis para seleccionar el mejor modelo (capacidad predictiva) con el cual se realizará la predicción.
+
+# Predicción 
+
+Se llevo a cabo la predicción de las primas de Mapfre para los trimestres de los próximos dos años. La predicción:
+
+|      | Q1       | Q2       | Q3       | Q4       |
+|------|----------|----------|----------|----------|
+| 2018 | 6431.081 | 6070.836 | 5516.262 | 5619.637 |
+| 2019 | 6484.425 | 6120.941 | 5563.325 | 5663.844 |
+
+![](Images/Forcast Primas.png)
+
+El modelo utilizado fue un modelo ETS sobre el total de primas de Mapfre.
+
+# Resumen Ejecutivo
+
+## Proceso General
+
+En este análisis utilizamos dos enfoques para la predicción de las primas de los seguros vendidos por Mapfre. Se trabajó primero con el total de primas (sin distinguir por tipo de producto) y, por otro lado, distinguiendo entre primas de seguros de vida y seguros de no vida. Los enfoques utilizados para predicir:
+
+  * Exponential Smoothing (Ets - Error, Trend and Season).
+  * ARIMA.
+  
+## Resultados
+
+Comparando el poder predictivo de cada uno de los modelos (generados con el set de entrenamiento) a través de la métricas de error de predicción (MSE, MAE y Bias) en el set de Test (primas vendidas por trimestre en el año 2017), el modelo que tuvo mejor desempeño fue el ETS para el total de primas vendidas (i.e. sin distinción de productos). Como se muestra en la tabla a continuación:
+
+|             | MSE      | MAE      | Bias     |
+|-------------|----------|----------|----------|
+| Total ETS   | 163016.7 | 345.3866 | 45.9941  |
+| Suma ETS    | 251082.2 | 464.3306 | 17.35465 |
+| Total ARIMA | 316798   | 492.7053 | 492.7053 |
+| Suma ARIMA  | 353436.3 | 522.6284 | 522.6284 |
+
+![](Images/ETS total.png)
+![](Images/ARIMA total.png)
+
+Comparando el poder predictivo para el producto de seguros de Vida. El modelo ARIMA es el que moejor poder predictivo tiene.
+
+|            | MSE      | MAE      | Bias      |
+|------------|----------|----------|-----------|
+| Vida ETS   | 25336.91 | 151.6686 | -47.48728 |
+| Vida ARIMA | 21651.86 | 112.5497 | -44.29429 |
+
+![](Images/ETS vida.png)
+
+![](Images/ARIMA vida.png)
+
+El modelo ARIMA parece explicar mejor la componente estacional de los seguros de vida. El gráfico del modelo ETS devuelve una prediccion plana para este tipo de seguro. 
+
+
+Comparando el poder predictivo para el producto de seguros de Vida. El modelo ARIMA es el que mejor poder predictivo tiene.
+
+|            | MSE      | MAE      | Bias     |
+|------------|----------|----------|----------|
+| Vida ETS   | 164442.5 | 387.3306 | 30.13263 |
+| Vida ARIMA | 388540.4 | 566.9227 | 566.9227 |
+
+![](Images/ETS no vida.png)
+
+![](Images/ARIMA no vida.png)
+
+## Predicción 2018 y 2019
+
+Al ser el mejor modelo en Test el ETS del total, se llevo a cabo la predicción para los trimestres de los próximos dos años de las primas totales de Mapfre. La predicción:
+
+|      | Q1       | Q2       | Q3       | Q4       |
+|------|----------|----------|----------|----------|
+| 2018 | 6431.081 | 6070.836 | 5516.262 | 5619.637 |
+| 2019 | 6484.425 | 6120.941 | 5563.325 | 5663.844 |
+
+![](Images/Forcast Primas.png)
+
+## Observaciones
+
+Basados en las comparativas de métricas de errores de prediccón se ha mostrado cual sería la predicción para los próximos dos años según el mejor modelos. Algo que resulta interesante es que para total y no vida, el mejor modelo era ETS en ambos casos. Sin embargo, el mejor modelo para predecir las primas de vida es un modelo ARIMA (se ha dado una explicación del porque creemos que sucede esto).
+
+## Comparación de predicciones de los modelos por tipo de producto
+
+![](Images/Pred total.png)
+
+![](Images/Pred Vida.png)
+
+![](Images/Pred no vida.png)
+
+# Anexos y Código
+
+## Paquetes y Datos
+```{r}
+## Paquetes ############################################################################################
+##
+library(dplyr)
+library(tidyverse)
+require(forecast)
+require(xts)
+require(ggplot2)
+library(zoo)
+library(hts)
+library(ggfortify)
+## Datos ###############################################################################################
+##
+datos <- read.csv("Primas_mapfre.csv", sep = ";", dec = ",")
+## Total
+datos <- datos %>% mutate(total = Primas_vida + Primas_no_vida)
+## Fecha
+datos$Fecha <- as.Date(datos$Fecha, "%m/%d/%Y")
+```
+
+## Análisi Exploratorio de Datos
+```{r}
+## Análisis exploratorio de datos ######################################################################
+##
+ggplot(data = datos, aes(x = Fecha)) +
+  geom_line(aes(y = Primas_vida, colour = "Vida")) +
+  geom_line(aes(y = Primas_no_vida, colour = "No Vida")) +
+  geom_line(aes(y = total, colour = "Total")) 
+```
+
+## Modelo ETS para primas totales
+
+### Preparando datos
+```{r}
+## Trabajando un modelo ETS para Total #################################################################
+##
+
+## Plot Serie Total
+total = xts((datos$total), order.by = datos$Fecha, frequency = 4)
+## Generate quarterly data
+total = to.quarterly(total)  ## OJO cambia a que sea trimestral
+## paqueteria zoo para mejor funcionamiento
+total = as.zoo(total$total.Close) 
+autoplot(total) + ggtitle("Primas Trimestrales") + xlab("Trimestres") + ylab("Primas")
+## Seasonal Plot
+ggfreqplot(as.ts(total), freq = 4, nrow = 1, facet.labeller = c("1T","2T","3T","4T")) + 
+  ggtitle("Primas Trimestrales")
+```
+
+### Trainig set
+```{r}
+#- Training set     -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
+
+## Select number of observation to compare forecast
+cOmit = 4
+
+## Data Size
+nObs = length(total)
+
+## sub_sample
+oTotal <- window(total,start = index(total[1]),end = index(total[nObs - cOmit]))  
+
+```
+
+### Test
+```{r}
+Totaletsfit <- ets(oTotal)
+#f orecast model
+fTotal.ets = forecast(Totaletsfit)
+# Results
+summary(fTotal.ets)  
+## Eligio un MAM
+## - M - multiplicativa la tendencia
+## - A - aditiva en la pendiente
+## - M - multiplicativa en estacionalidad
+
+## ojo -> simpre que se hagan predicciones se debe dar un intervalo de confianza
+
+# Plot
+plot(fTotal.ets)
+lines(window(total),type = "o")
+
+
+
+```
+
+### Metricas de predicción
+```{r}
+#Actual and Forecast
+totalFitmat <- matrix(c(fTotal.ets$mean[1:cOmit],total[(nObs - cOmit + 1):nObs]),ncol = 2)
+totalFitmat
+## MSE
+mean((totalFitmat[,1] - totalFitmat[,2])^2)
+## MAE
+mean(abs(totalFitmat[,1] - totalFitmat[,2]))
+## Bias
+mean(totalFitmat[,1] - totalFitmat[,2])
+```
+
+### Predicción
+```{r}
+#- Complete set        -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
+
+## Select automatic ETS 
+etsfit <- ets(total)
+## forecast model
+total.ets <- forecast(etsfit)
+## Results
+summary(total.ets)  
+## Eligio un MAM
+## - M - multiplicativa la tendencia
+## - A - aditiva en la pendiente
+## - M - multiplicativa en estacionalidad
+
+## ojo -> simpre que se hagan predicciones se debe dar un intervalo de confianza
+
+# Plot
+plot(total.ets, main = "Forcast Primas Mapfre")
+lines(window(total),type = "o")
+```
+
+## Modelo ETS para primas vida
+
+### Preparando datos
+```{r}
+## Trabajando un modelo ETS por separado ###############################################################
+##
+
+## Plot Serie Primas Vida
+vida = xts((datos$Primas_vida), order.by = datos$Fecha, frequency = 4)
+## Generate quarterly data
+vida = to.quarterly(vida)  ## OJO cambia a que sea trimestral
+## paqueteria zoo para mejor funcionamiento
+vida = as.zoo(vida$vida.Close) 
+autoplot(vida) + ggtitle("Primas Trimestrales Vida") + xlab("Trimestres") + ylab("Ventas")
+## Seasonal Plot
+ggfreqplot(as.ts(vida), freq = 4, nrow = 1, facet.labeller = c("1T","2T","3T","4T")) + 
+  ggtitle("Primas Trimestrales Vida")
+```
+
+### Trainig set
+
+```{r}
+#- Training set     -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
+
+## Select number of observation to compare forecast
+cOmit = 4
+
+## Data Size
+nObs = length(vida)
+
+## sub_sample
+ovida <- window(vida,start = index(vida[1]),end = index(vida[nObs - cOmit]))  
+
+
+```
+
+
+### Test
+```{r}
+vidaetsfit <- ets(ovida)
+#f orecast model
+fvida.ets = forecast(vidaetsfit)
+# Results
+summary(fvida.ets)  
+## Eligio un MAM
+## - M - multiplicativa la tendencia
+## - A - aditiva en la pendiente
+## - M - multiplicativa en estacionalidad
+
+## ojo -> simpre que se hagan predicciones se debe dar un intervalo de confianza
+
+# Plot
+plot(fvida.ets)
+lines(window(vida),type = "o")
+```
+
+
+### Métrica de predicción
+
+```{r}
+#Actual and Forecast
+vidaFitmat <- matrix(c(fvida.ets$mean[1:cOmit],vida[(nObs - cOmit + 1):nObs]),ncol = 2)
+vidaFitmat
+## MSE
+mean((vidaFitmat[,1] - vidaFitmat[,2])^2)
+## MAE
+mean(abs(vidaFitmat[,1] - vidaFitmat[,2]))
+## BIAS
+mean((vidaFitmat[,1] - vidaFitmat[,2]))
+```
+
+
+### Predicción
+
+```{r}
+#- Complete set        -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
+
+## Select automatic ETS 
+etsfit <- ets(vida)
+## forecast model
+vida.ets <- forecast(etsfit)
+## Results
+summary(vida.ets)  
+## Eligio un MAM
+## - M - multiplicativa la tendencia
+## - A - aditiva en la pendiente
+## - M - multiplicativa en estacionalidad
+
+## ojo -> simpre que se hagan predicciones se debe dar un intervalo de confianza
+
+# Plot
+plot(vida.ets, main = "Forcast Primas vida")
+lines(window(vida),type = "o")
+```
+
+
+## Modelo ETS para primas no vida
+
+### Preparando datos
+
+```{r}
+## Plot Serie Primas No Vida
+no_vida <- xts((datos$Primas_no_vida), order.by = datos$Fecha, frequency = 4)
+## Generate quarterly data
+no_vida <- to.quarterly(no_vida)  ## OJO cambia a que sea trimestral
+## paqueteria zoo para mejor funcionamiento
+no_vida <- as.zoo(no_vida$no_vida.Close) 
+autoplot(no_vida) + ggtitle("Primas Trimestrales No Vida") + xlab("Trimestres") + ylab("Primas")
+## Seasonal Plot
+ggfreqplot(as.ts(no_vida), freq = 4, nrow = 1, facet.labeller = c("1T","2T","3T","4T")) + 
+  ggtitle("Primas Trimestrales No Vida")
+
+```
+
+
+### Trainig set
+
+```{r}
+#- Training set     -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
+
+## Select number of observation to compare forecast
+cOmit = 4
+
+## Data Size
+nObs = length(no_vida)
+
+## sub_sample
+ono_vida <- window(no_vida,start = index(no_vida[1]),end = index(no_vida[nObs - cOmit]))
+```
+
+
+### Test
+
+```{r}
+no_vidaetsfit <- ets(ono_vida)
+#f orecast model
+fno_vida.ets = forecast(no_vidaetsfit)
+# Results
+summary(fno_vida.ets)  
+## Eligio un MAM
+## - M - multiplicativa la tendencia
+## - A - aditiva en la pendiente
+## - M - multiplicativa en estacionalidad
+
+## ojo -> simpre que se hagan predicciones se debe dar un intervalo de confianza
+
+# Plot
+plot(fno_vida.ets)
+lines(window(no_vida),type = "o")
+```
+
+
+### Métrica de predicción
+
+```{r}
+#Actual and Forecast
+no_vidaFitmat <- matrix(c(fno_vida.ets$mean[1:cOmit],no_vida[(nObs - cOmit + 1):nObs]),ncol = 2)
+no_vidaFitmat
+## MSE
+mean((no_vidaFitmat[,1] - no_vidaFitmat[,2])^2)
+## MAE
+mean(abs(no_vidaFitmat[,1] - no_vidaFitmat[,2]))
+## Bias
+mean((no_vidaFitmat[,1] - no_vidaFitmat[,2]))
+```
+
+
+### Predicción
+
+```{r}
+#- Complete set        -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
+
+## Select automatic ETS 
+etsfit <- ets(no_vida)
+## forecast model
+no_vida.ets <- forecast(etsfit)
+## Results
+summary(no_vida.ets)  
+## Eligio un MAM
+## - M - multiplicativa la tendencia
+## - A - aditiva en la pendiente
+## - M - multiplicativa en estacionalidad
+
+## ojo -> simpre que se hagan predicciones se debe dar un intervalo de confianza
+
+# Plot
+plot(no_vida.ets, main = "Forcast Primas no vida")
+lines(window(no_vida),type = "o")
+```
+
+
+## Modelo ETS para primas HTS (@HTS)
+
+```{r}
+## modelo ETS desde el enfoque de series de tiempo jerarquicas (hts)
+##
+
+## Plot Series
+sepxts <- xts(datos[,c(3,4)], order.by = datos$Fecha, frequency = 4)
+## Generate quarterly data
+sepxtsVida   <- to.quarterly(sepxts$Primas_vida)     ## OJO cambia a que sea trimestral
+sepxtsNoVida <- to.quarterly(sepxts$Primas_no_vida)  ## OJO cambia a que sea trimestral
+## paqueteria zoo para mejor funcionamiento
+sepxts <- cbind(sepxtsNoVida$`sepxts$Primas_no_vida.Close`, sepxtsVida$`sepxts$Primas_vida.Close`)
+sepxts <- as.zoo(sepxts) 
+names(sepxts) <- c("NV", "V")
+autoplot(sepxts) + ggtitle("Primas Trimestrales") + xlab("Trimestres") + ylab("Primas")
+## Select automatic HTS
+sepmod <- hts(sepxts, nodes = list(2))
+## Forcast
+sep.fit <- forecast(sepmod, method = 'bu', fmethod = 'ets') # buttom up
+names(sep.fit$labels) = c("Total", "No vida (NV) - Vida V")   
+plot(sep.fit)
+
+```
+
+## Suma de vida y no vida ETS
+
+```{r}
+## Despues de trabajar por separado vida y no vida sumamos para ver la prediccion total
+
+#Actual and Forecast
+sumaFitmat <- vidaFitmat + no_vidaFitmat
+sumaFitmat
+## MSE
+mean((sumaFitmat[,1] - sumaFitmat[,2])^2)
+## MAE
+mean(abs(sumaFitmat[,1] - sumaFitmat[,2]))
+## Bias
+mean(sumaFitmat[,1] - sumaFitmat[,2])
+
+```
+
+
+## Modelo ARIMA para primas totales
+
+### Preparando datos y análisis por diferencias
+
+```{r}
+## Nuestra ts de primas totales se llama "total"
+
+df_total <- data.frame(value = as.vector(total),
+                       time = time(total))
+ggplot(df_total) + geom_point(aes(x = time, y = value)) + 
+  geom_line(aes(x = time, y = value)) + 
+  ylab("Primas") + 
+  ggtitle("Primas Trimestrales Mapfre") + 
+  xlab("Trimestres")
+
+## trabajamos con transformacion logaritmica
+logTotal <- log(total)
+df_logTotal <- data.frame(value = as.vector(logTotal),
+                      time = time(logTotal))
+ggplot(df_logTotal) + geom_point(aes(x = time, y = value)) + 
+  geom_line(aes(x = time, y = value)) + 
+  ylab("log - Primas") + 
+  ggtitle("Primas Trimestrales Mapfre (logarítmicas)") + 
+  xlab("Trimestres")
+
+## Difference
+ggtsdisplay(logTotal)
+ggtsdisplay(diff(logTotal))
+ggtsdisplay(diff(logTotal,4))
+ggtsdisplay(diff(diff(logTotal,4),1))
+```
+
+
+### Trainig set
+
+```{r}
+#- Training set     -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
+
+#Select number of observation to compare forecast
+cOmit = 4
+
+#Data Size
+nObs = length(total)
+
+#sub_sample TRAINING
+oatotal <- window(total, start = index(total[1]), end = index(total[nObs - cOmit]))
+```
+
+
+### Test
+
+```{r}
+## ARIMA MODEL Automatic selection####
+total.train.arima = auto.arima(oatotal,lambda = 0) ## lamnda cero is log transformation
+summary(total.train.arima)
+
+#residual analysis
+ggtsdisplay(total.train.arima$residuals)
+
+#box-Ljung Test
+Box.test(total.train.arima$residuals,lag = 4, fitdf = 3, type = "Lj")
+Box.test(total.train.arima$residuals,lag = 8, fitdf = 3, type = "Lj")
+Box.test(total.train.arima$residuals,lag = 12, fitdf = 3, type = "Lj")
+
+plot(forecast(total.train.arima))
+lines(window(total),type = "o")
+```
+
+
+### Métrica de predicción
+
+```{r}
+ftotal_arima <- forecast(total.train.arima)
+
+totalArimaMatrix <- matrix(c(ftotal_arima$mean[1:4], as.double(tail(total,4))), ncol = 2)
+totalArimaMatrix
+## MSE
+mean((totalArimaMatrix[,1] - totalArimaMatrix[,2])^2)
+## MAE
+mean(abs(totalArimaMatrix[,1] - totalArimaMatrix[,2]))
+## Bias
+mean(totalArimaMatrix[,1] - totalArimaMatrix[,2])
+```
+
+
+### Predicción
+
+```{r}
+#- Complete set     -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
+
+## ARIMA MODEL Automatic selection
+total.fit.arima <- auto.arima(total, lambda = 0) ## lamnda cero para transformacion log 
+summary(total.fit.arima)
+
+#residual analysis
+ggtsdisplay(total.fit.arima$residuals)
+
+#box-Ljung Test
+Box.test(total.fit.arima$residuals, lag = 4, fitdf = 3, type = "Lj")
+Box.test(total.fit.arima$residuals, lag = 8, fitdf = 3, type = "Lj")
+Box.test(total.fit.arima$residuals, lag = 12, fitdf = 3, type = "Lj")
+
+tota.arima <- forecast(total.fit.arima)
+
+ggplot(df_total) + geom_point(aes(x = time,y = value)) + 
+  geom_line(aes(x = time, y = value)) +
+  geom_forecast(tota.arima, alpha = 0.4) +
+  ggtitle("ARIMA: Predicción Primas")
+```
+
+
+## Modelo ARIMA para primas vida
+
+### Preparando datos y análisis por diferencias
+
+```{r}
+## Trabajando un modelo ARIMA para Primas por separdo #################################################
+##
+
+## Nuestra ts de primas vida se llama "vida"
+
+df_vida <- data.frame(value = as.vector(vida),
+                       time = time(vida))
+ggplot(df_vida) + geom_point(aes(x = time, y = value)) + 
+  geom_line(aes(x = time, y = value)) + 
+  ylab("Primas") + 
+  ggtitle("Primas Trimestrales Mapfre") + 
+  xlab("Trimestres")
+
+## trabajamos con transformacion logaritmica
+logvida <- log(vida)
+df_logvida <- data.frame(value = as.vector(logvida),
+                          time = time(logvida))
+ggplot(df_logvida) + geom_point(aes(x = time, y = value)) + 
+  geom_line(aes(x = time, y = value)) + 
+  ylab("log - Primas") + 
+  ggtitle("Primas Trimestrales Mapfre (logarítmicas)") + 
+  xlab("Trimestres")
+
+## Difference
+ggtsdisplay(logvida)
+ggtsdisplay(diff(logvida))
+ggtsdisplay(diff(logvida,4))
+ggtsdisplay(diff(diff(logvida,4),1))
+```
+
+
+### Trainig set
+
+```{r}
+#- Training set     -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
+
+#Select number of observation to compare forecast
+cOmit = 4
+
+#Data Size
+nObs = length(vida)
+
+#sub_sample TRAINING
+oavida <- window(vida, start = index(vida[1]), end = index(vida[nObs - cOmit]))
+```
+
+
+### Test
+
+```{r}
+## ARIMA MODEL Automatic selection####
+vida.train.arima = auto.arima(oavida,lambda = 0) ## lamnda cero is log transformation
+summary(vida.train.arima)
+
+#residual analysis
+ggtsdisplay(vida.train.arima$residuals)
+
+#box-Ljung Test
+Box.test(vida.train.arima$residuals,lag = 4, fitdf = 3, type = "Lj")
+Box.test(vida.train.arima$residuals,lag = 8, fitdf = 3, type = "Lj")
+Box.test(vida.train.arima$residuals,lag = 12, fitdf = 3, type = "Lj")
+
+plot(forecast(vida.train.arima))
+lines(window(vida),type = "o")
+```
+
+
+
+### Métrica de predicción
+
+```{r}
+fvida_arima <- forecast(vida.train.arima)
+
+vidaArimaMatrix <- matrix(c(fvida_arima$mean[1:4], as.double(tail(vida,4))), ncol = 2)
+vidaArimaMatrix
+
+## MSE
+mean((vidaArimaMatrix[,1] - vidaArimaMatrix[,2])^2)
+## MAE
+mean(abs(vidaArimaMatrix[,1] - vidaArimaMatrix[,2]))
+## Bias
+mean(vidaArimaMatrix[,1] - vidaArimaMatrix[,2])
+```
+
+### Predicción
+
+```{r}
+#- Complete set     -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
+
+## ARIMA MODEL Automatic selection
+vida.fit.arima <- auto.arima(vida, lambda = 0) ## lamnda cero para transformacion log 
+summary(vida.fit.arima)
+
+#residual analysis
+ggtsdisplay(vida.fit.arima$residuals)
+
+#box-Ljung Test
+Box.test(vida.fit.arima$residuals, lag = 4, fitdf = 3, type = "Lj")
+Box.test(vida.fit.arima$residuals, lag = 8, fitdf = 3, type = "Lj")
+Box.test(vida.fit.arima$residuals, lag = 12, fitdf = 3, type = "Lj")
+
+vida.arima <- forecast(vida.fit.arima)
+
+ggplot(df_vida) + geom_point(aes(x = time,y = value)) + 
+  geom_line(aes(x = time, y = value)) +
+  geom_forecast(vida.arima, alpha = 0.4) +
+  ggtitle("ARIMA: Predicción Primas Vida")
+```
+
+
+## Modelo ARIMA para primas no vida
+
+### Preparando datos y análisis por diferencias
+
+```{r}
+## Nuestra ts de primas no vida se llama "no_vida"
+
+df_no_vida <- data.frame(value = as.vector(no_vida),
+                      time = time(no_vida))
+ggplot(df_no_vida) + geom_point(aes(x = time, y = value)) + 
+  geom_line(aes(x = time, y = value)) + 
+  ylab("Primas") + 
+  ggtitle("Primas Trimestrales Mapfre") + 
+  xlab("Trimestres")
+
+## trabajamos con transformacion logaritmica
+logno_vida <- log(no_vida)
+df_logno_vida <- data.frame(value = as.vector(logno_vida),
+                         time = time(logno_vida))
+ggplot(df_logno_vida) + geom_point(aes(x = time, y = value)) + 
+  geom_line(aes(x = time, y = value)) + 
+  ylab("log - Primas") + 
+  ggtitle("Primas Trimestrales Mapfre (logarítmicas)") + 
+  xlab("Trimestres")
+
+## Difference
+ggtsdisplay(logno_vida)
+ggtsdisplay(diff(logno_vida))
+ggtsdisplay(diff(logno_vida,4))
+ggtsdisplay(diff(diff(logno_vida,4),1))
+
+```
+
+
+### Trainig set
+
+```{r}
+#- Training set     -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
+
+#Select number of observation to compare forecast
+cOmit = 4
+
+#Data Size
+nObs = length(no_vida)
+
+#sub_sample TRAINING
+oano_vida <- window(no_vida, start = index(no_vida[1]), end = index(no_vida[nObs - cOmit]))
+
+```
+
+
+### Test
+
+```{r}
+## ARIMA MODEL Automatic selection
+no_vida.train.arima = auto.arima(oano_vida,lambda = 0) ## lamnda cero is log transformation
+summary(no_vida.train.arima)
+
+#residual analysis
+ggtsdisplay(no_vida.train.arima$residuals)
+
+#box-Ljung Test
+Box.test(no_vida.train.arima$residuals,lag = 4, fitdf = 3, type = "Lj")
+Box.test(no_vida.train.arima$residuals,lag = 8, fitdf = 3, type = "Lj")
+Box.test(no_vida.train.arima$residuals,lag = 12, fitdf = 3, type = "Lj")
+
+plot(forecast(no_vida.train.arima))
+lines(window(no_vida),type = "o")
+```
+
+### Métrica de predicción
+
+```{r}
+fno_vida_arima <- forecast(no_vida.train.arima)
+
+no_vidaArimaMatrix <- matrix(c(fno_vida_arima$mean[1:4], as.double(tail(no_vida,4))), ncol = 2)
+no_vidaArimaMatrix
+
+## MSE
+mean((no_vidaArimaMatrix[,1] - no_vidaArimaMatrix[,2])^2)
+## MAE
+mean(abs(no_vidaArimaMatrix[,1] - no_vidaArimaMatrix[,2]))
+## Bias
+mean(no_vidaArimaMatrix[,1] - no_vidaArimaMatrix[,2])
+
+```
+
+### Predicción
+
+```{r}
+#- Complete set     -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
+
+
+## ARIMA MODEL Automatic selection
+no_vida.fit.arima <- auto.arima(no_vida, lambda = 0) ## lamnda cero para transformacion log 
+summary(no_vida.fit.arima)
+
+#residual analysis
+ggtsdisplay(no_vida.fit.arima$residuals)
+
+#box-Ljung Test
+Box.test(no_vida.fit.arima$residuals, lag = 4, fitdf = 3, type = "Lj")
+Box.test(no_vida.fit.arima$residuals, lag = 8, fitdf = 3, type = "Lj")
+Box.test(no_vida.fit.arima$residuals, lag = 12, fitdf = 3, type = "Lj")
+
+no_vida.arima <- forecast(no_vida.fit.arima)
+
+ggplot(df_no_vida) + geom_point(aes(x = time,y = value)) + 
+  geom_line(aes(x = time, y = value)) +
+  geom_forecast(no_vida.arima, alpha = 0.4) +
+  ggtitle("ARIMA: Predicción Primas No Vida")
+
+```
+
+## Modelo ARIMA para primas HTS (@HTS)
+
+```{r}
+## modelo ARIMA desde el enfoque de series de tiempo jerarquicas (hts)
+##
+
+## Plot Series
+autoplot(sepxts) + ggtitle("Primas Trimestrales") + xlab("Trimestres") + ylab("Primas")
+## Select automatic HTS
+sepmod <- hts(sepxts, nodes = list(2))
+## Forcast
+sep.fit.arima <- forecast(sepmod, method = 'bu', fmethod = 'arima') ## buttom up arima
+names(sep.fit.arima$labels) = c("Total", "No vida (NV) - Vida V")   
+plot(sep.fit.arima)
+
+```
+
+## Suma vida y no vida ARIMA
+
+```{r}
+## Despues de trabajar por separado vida y no vida sumamos para ver la prediccion total
+
+sumaFitArimaMat <- vidaArimaMatrix + no_vidaArimaMatrix
+sumaFitArimaMat
+## MSE
+mean((sumaFitArimaMat[,1] - sumaFitArimaMat[,2])^2)
+## MAE
+mean(abs(sumaFitArimaMat[,1] - sumaFitArimaMat[,2]))
+## Bias
+mean(sumaFitArimaMat[,1] - sumaFitArimaMat[,2])
+```
+
+## Conclusiones y comparación de resultados
+
+```{r}
+## Conclusiones ######################################################################################
+##
+
+## Comparamos los forcast de los modelos
+compmat <-  matrix(c(as.vector(total.ets$mean), 
+                     as.vector(vida.ets$mean),
+                     as.vector(no_vida.ets$mean),
+                     as.vector(vida.ets$mean) + as.vector(no_vida.ets$mean),
+                     as.vector(sep.fit$bts[,2]),
+                     as.vector(sep.fit$bts[,1]),
+                     as.vector(sep.fit$bts[,1]) + as.vector(sep.fit$bts[,2]),
+                     as.vector(tota.arima$mean), 
+                     as.vector(vida.arima$mean),
+                     as.vector(no_vida.arima$mean),
+                     as.vector(vida.arima$mean) + as.vector(no_vida.arima$mean),
+                     as.vector(sep.fit.arima$bts[,2]),
+                     as.vector(sep.fit.arima$bts[,1]),
+                     as.vector(sep.fit.arima$bts[,1]) + as.vector(sep.fit.arima$bts[,2]),
+                     as.vector(time(total.ets$mean))),ncol = 15)
+
+colnames(compmat) <- c("Total ETS",
+                       "Vida ETS",
+                       "No Vida ETS",
+                       "V+NV ETS",
+                       "Vida ETS HTS",
+                       "No Vida ETS HTS",
+                       "V+NV ETS HTS",
+                       "Total ARIMA",
+                       "Vida ARIMA",
+                       "No Vida ARIMA",
+                       "V+NV ARIMA",
+                       "Vida ARIMA HTS",
+                       "No Vida ARIMA HTS",
+                       "V+NV ARIMA HTS",
+                       "Trimestre")
+
+compmat <- as.data.frame(compmat)
+compmat
+
+## comparamos graficamente
+ggplot(data = compmat, aes(x = Trimestre)) +
+  geom_line(aes(y = `Total ETS`, colour = "Total ETS")) +
+  geom_line(aes(y = `V+NV ETS`, colour = "V+NV ETS")) +
+  geom_line(aes(y = `Total ARIMA`, colour = "Total ARIMA")) +
+  geom_line(aes(y = `V+NV ARIMA`, colour = "V+NV ARIMA")) +
+  ggtitle("Primas Totales") + ylab("Primas")
+
+ggplot(data = compmat, aes(x = Trimestre)) +
+  geom_line(aes(y = `Vida ETS`, colour = "Vida ETS")) +
+  geom_line(aes(y = `Vida ARIMA`, colour = "Vida ARIMA")) +
+  ggtitle("Primas Vida") + ylab("Primas")
+
+ggplot(data = compmat, aes(x = Trimestre)) +
+  geom_line(aes(y = `No Vida ETS`, colour = "No Vida ETS")) +
+  geom_line(aes(y = `No Vida ARIMA`, colour = "No Vida ARIMA")) +
+  ggtitle("Primas No Vida") + ylab("Primas")
+
+```
+
+
+---
+references:
+- id:HTS
+  title: Forecasting: principles and practice 
+  author:
+  - family: Hyndman
+    given: Rob
+  publisher: OTEXTS
+  type: book
+  issued:
+    year: 2018
+---
+

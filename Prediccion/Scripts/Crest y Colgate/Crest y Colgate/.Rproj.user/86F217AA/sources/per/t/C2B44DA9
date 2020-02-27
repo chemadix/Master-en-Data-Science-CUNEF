@@ -1,0 +1,26 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1573987579727.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "1098519377",
+    "id" : "C2B44DA9",
+    "lastKnownWriteTime" : 1574365306,
+    "last_content_update" : 1574365306870,
+    "path" : "~/CUNEF/Predicción/Crest y Colgate/Crest y Colgate/scriptCC.R",
+    "project_path" : "scriptCC.R",
+    "properties" : {
+        "cursorPosition" : "246,40",
+        "scrollLine" : "235",
+        "tempName" : "Untitled1"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 2,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

@@ -1,0 +1,816 @@
+---
+title: "Crest y Colgate"
+author: "José María Álvarez Silva"
+date: "21/11/2019"
+output:
+  html_document:
+    df_print: paged
+  html_notebook: default
+  pdf_document: default
+---
+CUNEF - Master en Data Science para Finanzas
+Predicción
+
+# Propósito
+
+Predicción del _Market Share_ de crest y colgate. El objetivo es predecir las 16 semanas del año 1963, para las dos cuotas de mercado, tomando en cuenta el evento del ADA (1 de agosto de 1960, el Consejo de Terapéutica Dental de la American Dental Association (ADA) aprobó a Crest como una "ayuda importante en cualquier programa de higiene dental"). Este evento parece afectar la participación de mercado de ambos competidores por lo que es importante tenerlo en cuenta a la hora de predecir. La predicción se realizó con modelos ARIMA. Adicionalmente, un modelo de función de tranferencia entre las dos cuotas.
+
+# Predicción 
+
+Se llevo a cabo la predicción de la participación de mercado de Crest y Colgate para las próximas 16 semanas. La predicción de Crest:
+
+| 1963  | MS       | MS       | MS       | MS       |
+|-------|----------|----------|----------|----------|
+| 1-4   | 0.387001 | 0.395869 | 0.376461 | 0.391011 |
+| 5-8   | 0.387204 | 0.388488 | 0.385771 | 0.387830 |
+| 9-12  | 0.387281 | 0.387468 | 0.387088 | 0.387377 |
+| 13-16 | 0.387298 | 0.387325 | 0.387272 | 0.387313 |
+
+
+```{r ,out.width='40%', echo=FALSE, fig.align='center'}
+knitr::include_graphics('Images/pred crest arima.png')
+```
+
+El modelo utilizado fue un modelo "ARIMA(3,1,0)" sobre el _Market Share_ de Crest. (escala logarítmica)
+
+La predicción de Colgate:
+
+| 1963  | MS       | MS       | MS       | MS       |
+|-------|----------|----------|----------|----------|
+| 1-4   | 0.264273 | 0.264273 | 0.264273 | 0.264273 |
+| 5-8   | 0.264273 | 0.264273 | 0.264273 | 0.264273 |
+| 9-12  | 0.264273 | 0.264273 | 0.264273 | 0.264273 |
+| 13-16 | 0.264273 | 0.264273 | 0.264273 | 0.264273 |
+
+```{r ,out.width='40%', echo=FALSE, fig.align='center'}
+knitr::include_graphics('Images/pred colgate arima.png')
+```
+
+El modelo utilizado fue un modelo "ARIMA(0,1,1)" sobre el _Market Share_ de Colgate. (escala logarítmica)
+
+# Resumen Ejecutivo
+
+## Proceso General
+
+En este análisis utilizamos dos enfoques para la predicción del _Market Share_ de las siguientes 16 semanas de __Crest__ y __Colgate__. Se trabajó con el logaritmo de las series de tiempo del _Market Share_ semanal de cada compañía desde 1958 a 1963. Los enfoques utilizados para predicir:
+
+  * ARIMA.
+  * ARIMAX - ARIMA con intervención.
+  
+## Resultados
+
+Para tomar encuenta ADA se realizara un ajuste al modelar cada serie introduciendo una intervencion de tipo step:
+
+```{r ,out.width='40%', echo=FALSE, fig.align='center'}
+knitr::include_graphics('Images/dummy step.png')
+```
+
+### CREST
+
+Comparando el poder predictivo de cada uno de los modelos (generados con el set de entrenamiento) a través de la métricas de error de predicción (MSE, MAE y Bias) en el set de Test ( _Market Share_ por compañia menos las últimas 16 semanas), el modelo que tuvo mejor desempeño fue el "" sobre el _Market Share_ de Crest (escala logarítmica). Como se muestra en la tabla a continuación:
+
+|              | MSE      | MAE      | Bias     |
+|--------------|----------|----------|----------|
+| Crest ARIMA  | 0.015499 | 0.098578 | -0.06508 |
+| Crest ARIMAX | "      " | "      " | "      " |
+
+__Ajuste ARIMA__
+
+```{r ,out.width='40%', echo=FALSE, fig.align='center'}
+knitr::include_graphics('Images/ajuste crest arima.png')
+```
+
+__Ajuste ARIMA con intervención__
+
+```{r ,out.width='40%', echo=FALSE, fig.align='center'}
+knitr::include_graphics('Images/ajuste crest arimax.png')
+```
+
+### COLGATE
+
+Comparando el poder predictivo de cada uno de los modelos (generados con el set de entrenamiento) a través de la métricas de error de predicción (MSE, MAE y Bias) en el set de Test ( _Market Share_ por compañia menos las últimas 16 semanas), el modelo que tuvo mejor desempeño fue el "" sobre el _Market Share_ de Colgate (escala logarítmica). Como se muestra en la tabla a continuación:
+
+|                | MSE      | MAE      | Bias     |
+|----------------|----------|----------|----------|
+| Colgate ARIMA  | 0.043269 | 0.17629  | 0.143651 |
+| Colgate ARIMAX | "      " | "      " | "      " |
+
+__Ajuste ARIMA__
+
+```{r ,out.width='40%', echo=FALSE, fig.align='center'}
+knitr::include_graphics('Images/ajuste colgate arima.png')
+```
+
+__Ajuste ARIMA con intervención__
+
+```{r ,out.width='40%', echo=FALSE, fig.align='center'}
+knitr::include_graphics('Images/ajuste colgate arimax.png')
+```
+
+## Predicción
+
+### Predicción Crest
+
+Se llevo a cabo la predicción de la participación de mercado de Crest para las próximas 16 semanas. La predicción de Crest:
+
+| 1963  | MS       | MS       | MS       | MS       |
+|-------|----------|----------|----------|----------|
+| 1-4   | 0.387001 | 0.395869 | 0.376461 | 0.391011 |
+| 5-8   | 0.387204 | 0.388488 | 0.385771 | 0.387830 |
+| 9-12  | 0.387281 | 0.387468 | 0.387088 | 0.387377 |
+| 13-16 | 0.387298 | 0.387325 | 0.387272 | 0.387313 |
+
+__Predicción ARIMA__
+
+```{r ,out.width='40%', echo=FALSE, fig.align='center'}
+knitr::include_graphics('Images/pred crest arima.png')
+```
+
+```{r , out.width='40%', echo=FALSE, fig.align='center'}
+knitr::include_graphics('Images/pred crest arima 2.png')
+```
+
+
+### Predicción Colgate
+
+Se llevo a cabo la predicción de la participación de mercado de Colgate para las próximas 16 semanas (escala logarítmica). La predicción de Colgate:
+
+| 1963  | MS        | MS        | MS        | MS        |
+|-------|-----------|-----------|-----------|-----------|
+| 1-4   | -1.330771 | -1.330771 | -1.330771 | -1.330771 |
+| 5-8   | -1.330771 | -1.330771 | -1.330771 | -1.330771 |
+| 9-12  | -1.330771 | -1.330771 | -1.330771 | -1.330771 |
+| 13-16 | -1.330771 | -1.330771 | -1.330771 | -1.330771 |
+
+__Predicción ARIMA__
+
+```{r ,out.width='40%', echo=FALSE, fig.align='center'}
+knitr::include_graphics('Images/pred colgate arima.png')
+```
+
+```{r ,out.width='40%', echo=FALSE, fig.align='center'}
+knitr::include_graphics('Images/pred colgate arima 2.png')
+```
+
+
+## Detección de Outliers
+
+AL analizar las diferencias notamos un comportamiento normal (aproximadamente) por lo que una forma de buscar outliers es buscando valores en las colas.
+
+```{r ,out.width='40%', echo=FALSE, fig.align='center'}
+knitr::include_graphics('Images/Rplot.png')
+```
+
+Al establecer una regla para detección de outliers encontramos cuatro fechas para colgate; pero, el primero esta relacionado con el segundo y el tercero con el cuarto, por lo que al introducirlo al ARIMAX solo tomamos en cuenta el primero y el tercero (además de ADA). En el caso de crest, encontramos dos y uno que coincide con ADA.
+
+```{r ,out.width='40%', echo=FALSE, fig.align='center'}
+knitr::include_graphics('Images/out log.png')
+```
+
+```{r ,out.width='40%', echo=FALSE, fig.align='center'}
+knitr::include_graphics('Images/out log diff.png')
+```
+
+### Detección Automática 
+
+La Deteccion automatica resulta en uno de los mismos outliers antes encontrados para las dos series.
+
+## Modelo de función de tranferencia
+
+### Modelo Dinámico
+
+Explicar Crest con Crest pasado y Colgate
+```{r ,out.width='40%', echo=FALSE, fig.align='center'}
+knitr::include_graphics('Images/din 1.jpg')
+```
+
+
+Explicar las diferencias de Crest con las de Crest pasado y Colgate
+```{r ,out.width='40%', echo=FALSE, fig.align='center'}
+knitr::include_graphics('Images/din 2.jpg')
+```
+
+### Modelo de Función de Tranferencia
+
+Buscamos los coeficientes significativos:
+
+Con suficientes lags:
+```{r ,out.width='40%', echo=FALSE, fig.align='center'}
+knitr::include_graphics('Images/reg din res.png')
+```
+
+Coeficientes significativos:
+```{r ,out.width='40%', echo=FALSE, fig.align='center'}
+knitr::include_graphics('Images/tra.jpg')
+```
+
+Todos son significativos ( Coeficiente entre s.e. es mayor a 2).
+
+## Observaciones
+
+Al existir un cambio tan radical en el comportamiento de las cuotas del mercado de productos dentales es importante tener encuenta el evento de ADA ya que puede afectar el ajuste que se hace al modelor. Al observar el ajuste de las series, tanto de Crest como de Colgate, se observa claramente como se logra un mejor ajuste con los modelos ARIMA con intervención. La misma Lógica aplica para eventos aleatorios que pueden afectar el ajuste (outliers) por lo que es importante, después de analizarlos, considerarlos a la hora de modelar. 
+
+No fue posible realizar una predicción con el modelo ARIMAX.
+
+# Referencias
+
+* https://stats.stackexchange.com/questions/18375/how-to-fit-an-arimax-model-with-r
+* https://stackoverflow.com/questions/25224155/transfer-function-models-arimax-in-tsa
+* https://rpubs.com/simasiami/378726
+* https://cran.r-project.org/web/packages/TSA/TSA.pdf
+* https://stats.stackexchange.com/questions/169564/arimax-prediction-using-forecast-package
+
+# Anexos
+
+```{r, warning=FALSE, message=FALSE}
+########################################################################################################
+## Start Date: 18/11/2019
+## End Date:   -
+## Author:     José María Álvarez Silva
+## School:     CUNEF
+## Class:      Predicción
+## Assigment:  Crest y Colgate
+## Language:   Spanish
+##
+########################################################################################################
+## Predicción
+########################################################################################################
+## Primas Mapfre #######################################################################################
+##     ARIMAX y ARIMAS
+
+## Propósito ###########################################################################################
+##     Predicción del MS de Crest y Colgate con intervencion y sin intervención.
+```
+
+## Paquetes
+```{r, warning=FALSE, message=FALSE}
+## Paquetes ############################################################################################
+##
+library(dplyr)
+library(tidyverse)
+library(forecast)
+library(xts)
+library(ggplot2)
+library(zoo)
+library(ggfortify)
+library(skimr)
+library(gridExtra)
+library(ggpubr)
+library(TSA)
+library(Hmisc)
+library(astsa)
+library(dynlm)
+
+```
+
+## Datos
+```{r, warning=FALSE, message=FALSE}
+## Datos ###############################################################################################
+##
+datos <- read.csv("data.csv")
+
+datos$Date <- as.Date(paste(datos$Year, datos$Week, 1, sep = "-"), "%Y-%U-%u")
+
+skim(datos)
+```
+
+## Análisis Exploratorio de Datos
+```{r, warning=FALSE, message=FALSE}
+## Series 
+ggplot(data = datos, aes(x = Date)) +
+  geom_line(aes(y = Crest, colour = "Crest")) +
+  geom_line(aes(y = Colgate, colour = "Colgate")) +
+  ylab("Market Share") +
+  geom_vline(xintercept = as.numeric(datos$Date[135]), linetype = 2) ## 1 agosto 1960
+
+ggplot(data = filter(datos, Year == 1959 | Year == 1960 | Year == 1961), aes(x = Date)) +
+  geom_line(aes(y = Crest, colour = "Crest")) +
+  geom_line(aes(y = Colgate, colour = "Colgate")) +
+  ylab("log scale Market Share") +
+  geom_vline(xintercept = as.numeric(datos$Date[135]), linetype = 2) ## 1 agosto 1960
+```
+
+
+### Crest
+```{r, warning=FALSE, message=FALSE}
+## Plot Serie crest
+crest = xts((datos$Crest), order.by = datos$Date)
+colnames(crest) <- "Crest"
+## paqueteria zoo para mejor funcionamiento
+crest = as.zoo(crest$Crest) 
+#autoplot(crest) + ggtitle("Market Share Semanal - Crest") + xlab("Semanas") + ylab("Market Share") +
+#  geom_vline(xintercept = as.numeric(datos$Date[135]), linetype = 2)
+
+## Nuestra ts de market share de Crest de llama Crest
+
+df_crest <- data.frame(value = as.vector(crest),
+                       time = time(crest))
+ggplot(df_crest) + geom_point(aes(x = time, y = value)) + 
+  geom_line(aes(x = time, y = value)) + 
+  ylab("Market Share") + 
+  ggtitle("Market Share Semanal- Crest") + 
+  xlab("Semanas") +
+  geom_vline(xintercept = as.numeric(datos$Date[135]), linetype = 2)
+```
+
+#### LogCrest
+```{r, warning=FALSE, message=FALSE}
+## trabajamos con transformacion logaritmica
+logcrest <- log(crest)
+df_logcrest <- data.frame(value = as.vector(logcrest),
+                          time = time(logcrest))
+ggplot(df_logcrest) + geom_point(aes(x = time, y = value)) + 
+  geom_line(aes(x = time, y = value)) + 
+  ylab("log - MktShare") + 
+  ggtitle("Market Share Semanal- Crest (logarítmico)") + 
+  xlab("Semanas") +
+  geom_vline(xintercept = as.numeric(datos$Date[135]), linetype = 2)
+
+```
+
+#### Diferenciando la serie
+```{r, warning=FALSE, message=FALSE}
+## Difference
+ggtsdisplay(logcrest)
+ggtsdisplay(diff(logcrest))
+
+which(diff(logcrest) == max(diff(logcrest)))
+which(diff(logcrest) == min(diff(logcrest)))
+```
+
+### Colgate
+```{r, warning=FALSE, message=FALSE}
+#-#- Colgate #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-
+
+## Plot Serie colgate
+colgate = xts((datos$Colgate), order.by = datos$Date)
+colnames(colgate) <- "colgate"
+## paqueteria zoo para mejor funcionamiento
+colgate = as.zoo(colgate$colgate) 
+#autoplot(colgate) + ggtitle("Market Share Semanal - Colgate") + xlab("Semanas") + ylab("Market Share") +
+#  geom_vline(xintercept = as.numeric(datos$Date[135]), linetype = 2)
+
+## Nuestra ts de market share de colgate de llama colgate
+
+df_colgate <- data.frame(value = as.vector(colgate),
+                       time = time(colgate))
+ggplot(df_colgate) + geom_point(aes(x = time, y = value)) + 
+  geom_line(aes(x = time, y = value)) + 
+  ylab("Market Share") + 
+  ggtitle("Market Share Semanal- Colgate") + 
+  xlab("Semanas") +
+  geom_vline(xintercept = as.numeric(datos$Date[135]), linetype = 2)
+```
+
+#### LogColgate
+```{r, warning=FALSE, message=FALSE}
+## trabajamos con transformacion logaritmica
+logcolgate <- log(colgate)
+df_logcolgate <- data.frame(value = as.vector(logcolgate),
+                            time = time(logcolgate))
+ggplot(df_logcolgate) + geom_point(aes(x = time, y = value)) + 
+  geom_line(aes(x = time, y = value)) + 
+  ylab("log - MktShare") + 
+  ggtitle("Market Share Semanal- Colgate (logarítmico)") + 
+  xlab("Semanas") +
+  geom_vline(xintercept = as.numeric(datos$Date[135]), linetype = 2)
+
+```
+
+#### Diferenciando la serie
+```{r, warning=FALSE, message=FALSE}
+## Difference
+ggtsdisplay(logcolgate)
+ggtsdisplay(diff(logcolgate))
+ggtsdisplay(diff(logcolgate, 12))
+
+which(diff(logcolgate) == max(diff(logcolgate)))
+which(diff(logcolgate) == min(diff(logcolgate)))
+```
+
+## Detectando Outliers
+```{r, warning=FALSE, message=FALSE}
+#-#- Fechas Importantes #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-
+
+
+## histograms
+
+
+p1 <- ggplot(data = diff(logcrest,12), aes(Crest)) +
+  geom_histogram(aes(y = ..density.., fill = ..count..), color = "white") +
+  xlab("Crest") +
+  geom_density(fill = "steelblue", alpha = 0.5, color = "white") + 
+  theme(legend.position = "None")  + ylim(0,2) + xlim(-1.5,1.5) +
+  geom_vline(xintercept = c(2 * sd(diff(logcrest,12)),-2 * sd(diff(logcrest,12))),
+             linetype = 2, colour = "red")
+p2 <- ggplot(data = diff(logcolgate,12), aes(colgate)) +
+  geom_histogram(aes(y = ..density.., fill = ..count..), color = "white") +
+  xlab("Colgate") +
+  geom_density(fill = "steelblue", alpha = 0.5, color = "white") + 
+  theme(legend.position = "None")  + ylim(0,2) + xlim(-1.5,1.5) +
+  geom_vline(xintercept = c(2 * sd(diff(logcolgate,12)),-2 * sd(diff(logcolgate,12))),
+             linetype = 2, colour = "red")
+
+grid.arrange(
+  p1, p2,
+  widths = c( 1, 1),
+  top = text_grob("LogDifferences"),
+  layout_matrix = rbind(c(1, 2),
+                        c(1, 2))
+)
+```
+
+### Outliers
+```{r, warning=FALSE, message=FALSE}
+k = 4
+
+which(abs(diff(logcrest,12)) > k*sd(abs(diff(logcrest,12))))
+which(abs(diff(logcolgate,12)) > k*sd(abs(diff(logcolgate,12))))
+```
+
+### Outlier Grafocamente
+```{r, warning=FALSE, message=FALSE}
+## trabajando con logaritmos
+
+p1 <- autoplot(((logcrest)))  +
+  geom_vline(xintercept = as.numeric(datos$Date[126 + 12]), linetype = 2, colour = "red") +
+  geom_vline(xintercept = as.numeric(datos$Date[126 + 12]), linetype = 2, colour = "red") +
+  geom_vline(xintercept = as.numeric(datos$Date[90 + 12]), linetype = 2, colour = "red") +
+  geom_vline(xintercept = as.numeric(datos$Date[22 + 12]), linetype = 2, colour = "red") +
+  geom_vline(xintercept = as.numeric(datos$Date[135]), linetype = 1, colour = "blue")
+p2 <- autoplot(((logcolgate))) +
+  geom_vline(xintercept = as.numeric(datos$Date[90 + 12]), linetype = 2, colour = "red") +
+  geom_vline(xintercept = as.numeric(datos$Date[102 + 12]), linetype = 2, colour = "red") +
+  geom_vline(xintercept = as.numeric(datos$Date[187 + 12]), linetype = 2, colour = "red") +
+  geom_vline(xintercept = as.numeric(datos$Date[199 + 12]), linetype = 2, colour = "red") +
+  geom_vline(xintercept = as.numeric(datos$Date[135]), linetype = 1, colour = "blue")
+
+grid.arrange(
+  p1, p2,
+  widths = c( 1, 1),
+  #top = text_grob(Character),
+  layout_matrix = rbind(c(1, 1),
+                        c(2, 2))
+)
+
+
+## 12 lags (trimestre)
+
+p1 <- autoplot((diff(logcrest,12)))  +
+  geom_vline(xintercept = as.numeric(datos$Date[126 + 12]), linetype = 2, colour = "red") +
+  geom_vline(xintercept = as.numeric(datos$Date[126 + 12]), linetype = 2, colour = "red") +
+  geom_vline(xintercept = as.numeric(datos$Date[90 + 12]), linetype = 2, colour = "red") +
+  geom_vline(xintercept = as.numeric(datos$Date[22 + 12]), linetype = 2, colour = "red") +
+  geom_vline(xintercept = as.numeric(datos$Date[135]), linetype = 1, colour = "blue")
+p2 <- autoplot((diff(logcolgate,12))) +
+  geom_vline(xintercept = as.numeric(datos$Date[90 + 12]), linetype = 2, colour = "red") +
+  geom_vline(xintercept = as.numeric(datos$Date[102 + 12]), linetype = 2, colour = "red") +
+  geom_vline(xintercept = as.numeric(datos$Date[187 + 12]), linetype = 2, colour = "red") +
+  geom_vline(xintercept = as.numeric(datos$Date[199 + 12]), linetype = 2, colour = "red") +
+  geom_vline(xintercept = as.numeric(datos$Date[135]), linetype = 1, colour = "blue")
+
+grid.arrange(
+  p1, p2,
+  widths = c( 1, 1),
+  #top = text_grob(Character),
+  layout_matrix = rbind(c(1, 1),
+                        c(2, 2))
+)
+```
+
+## Crest ARIMA
+```{r, warning=FALSE, message=FALSE}
+## Crest ARIMA ########################################################################################
+modCrest <- auto.arima(logcrest)
+summary(modCrest)
+
+plot(as.double(logcrest), ylab = "Log(Crest)", type = "l")
+points(as.double(fitted(modCrest)), col = "blue")
+```
+
+### Training
+```{r, warning=FALSE, message=FALSE}
+#- Training set     -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
+
+## Select number of observation to compare forecast (16 semanas)
+cOmit = 16
+
+## Data Size
+nObs = length(logcrest)
+
+## sub_sample
+oCrest <- window(logcrest,start = index(logcrest[1]),end = index(logcrest[nObs - cOmit]))  
+
+## ARIMA MODEL Automatic selection####
+crest.train.arima = auto.arima(oCrest) ## lamnda cero is log transformation
+summary(crest.train.arima)
+
+```
+
+### Análisis de Residuales
+```{r, warning=FALSE, message=FALSE}
+#residual analysis
+ggtsdisplay(crest.train.arima$residuals)
+
+#box-Ljung Test
+Box.test(crest.train.arima$residuals,lag = 4, fitdf = 3, type = "Lj")
+Box.test(crest.train.arima$residuals,lag = 8, fitdf = 3, type = "Lj")
+Box.test(crest.train.arima$residuals,lag = 12, fitdf = 3, type = "Lj")
+## Residuales independientes
+```
+
+### Forecast
+```{r, warning=FALSE, message=FALSE}
+plot(forecast(crest.train.arima, h = 16))
+lines(window(logcrest),type = "o")
+
+plot(forecast(crest.train.arima, h = 16), xlim = c(-2800, -2420), ylim = c(-2,0))
+lines(window(logcrest),type = "o")
+
+fcrest_arima <- forecast(crest.train.arima, h = 16) ## predecimos 16 semanas
+```
+
+### Métricas de Predición
+```{r, warning=FALSE, message=FALSE}
+crestArimaMatrix <- matrix(c(fcrest_arima$mean[1:16], as.double(tail(logcrest,16))), ncol = 2)
+crestArimaMatrix
+## MSE
+mean((crestArimaMatrix[,1] - crestArimaMatrix[,2])^2)
+## MAE
+mean(abs(crestArimaMatrix[,1] - crestArimaMatrix[,2]))
+## Bias
+mean(crestArimaMatrix[,1] - crestArimaMatrix[,2])
+```
+
+## Colgate ARIMA
+```{r, warning=FALSE, message=FALSE}
+## Colgate ARIMA ######################################################################################
+modColgate <- auto.arima(logcolgate)
+summary(modColgate)
+
+plot(as.double(logcolgate), ylab = "Log(Crest)", type = "l")
+points(as.double(fitted(modColgate)), col = "blue")
+```
+
+### Training
+```{r, warning=FALSE, message=FALSE}
+
+#- Training set     -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
+
+## Select number of observation to compare forecast (16 semanas)
+cOmit = 16
+
+## Data Size
+nObs = length(logcolgate)
+
+## sub_sample
+ocolgate <- window(logcolgate,start = index(logcolgate[1]),end = index(logcolgate[nObs - cOmit]))  
+
+## ARIMA MODEL Automatic selection####
+colgate.train.arima = auto.arima(ocolgate) ## lamnda cero is log transformation
+summary(colgate.train.arima)
+
+```
+
+### Análisis de Residuales
+```{r, warning=FALSE, message=FALSE}
+#residual analysis
+ggtsdisplay(colgate.train.arima$residuals)
+
+#box-Ljung Test
+Box.test(colgate.train.arima$residuals,lag = 4, fitdf = 3, type = "Lj")
+Box.test(colgate.train.arima$residuals,lag = 8, fitdf = 3, type = "Lj")
+Box.test(colgate.train.arima$residuals,lag = 12, fitdf = 3, type = "Lj")
+## Residuales independientes
+```
+
+### Forecast
+```{r, warning=FALSE, message=FALSE}
+plot(forecast(colgate.train.arima, h = 16))
+lines(window(logcolgate),type = "o")
+
+plot(forecast(colgate.train.arima, h = 16), xlim = c(-2800, -2420), ylim = c(-2,0))
+lines(window(logcolgate),type = "o")
+
+fcolgate_arima <- forecast(colgate.train.arima, h = 16) ## predecimos 16 semanas
+```
+
+### Métricas de Predición
+```{r, warning=FALSE, message=FALSE}
+colgateArimaMatrix <- matrix(c(fcolgate_arima$mean[1:16], as.double(tail(logcolgate,16))), ncol = 2)
+colgateArimaMatrix
+## MSE
+mean((colgateArimaMatrix[,1] - colgateArimaMatrix[,2])^2)
+## MAE
+mean(abs(colgateArimaMatrix[,1] - colgateArimaMatrix[,2]))
+## Bias
+mean(colgateArimaMatrix[,1] - colgateArimaMatrix[,2])
+```
+
+## Outliers automáticos
+```{r, warning=FALSE, message=FALSE}
+## Outliers ###########################################################################################
+##
+
+## Crest
+detectAO(modCrest)
+detectIO(modCrest)
+
+## Colgate
+detectAO(modColgate)
+detectIO(modColgate)
+```
+
+## Crest ARIMAX
+```{r, warning=FALSE, message=FALSE}
+## Crest ARIMAX #######################################################################################
+
+pulseFCrest <- data.frame(ADA = 1*(seq(logcrest) == which(datos$Date == "1960-08-01")))[,1]
+plot(pulseFCrest)
+
+stepFCrest <- data.frame(ADA = 1*(seq(logcolgate) > which(datos$Date == "1960-08-01")))[,1]
+plot(stepFCrest)
+
+df_crest <- data.frame(pulseFCrest,stepFCrest)
+
+## Solo step
+crest.m1 = arimax(as.double(logcrest$Crest),
+                  order = c(3,1,0), method = 'ML',
+                  xtransf = data.frame(ADA = stepFCrest),
+                  transfer = list(c(0,0)),
+                  xreg = data.frame(Imp1 = 1*(seq(logcolgate) == (22 + 12)),
+                                    Imp2 = 1*(seq(logcolgate) == (90 + 12)))
+                  )
+crest.m1
+
+plot(ts(stepFCrest*(0.5808)))
+
+plot(as.double(logcrest), ylab = "Log(Crest)", type = "l")
+points(fitted(crest.m1), col = "blue")
+```
+
+### Training
+```{r, warning=FALSE, message=FALSE, error=FALSE}
+#- Training set     -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
+
+## Select number of observation to compare forecast (16 semanas)
+cOmit = 16
+
+## Data Size
+nObs = length(logcrest)
+
+## sub_sample
+oCrest <- window(logcrest,start = index(logcrest[1]),end = index(logcrest[nObs - cOmit]))
+
+stepFCrestARIMAX <- data.frame(ADA = 1*(seq(oCrest) > which(datos$Date == "1960-08-01")))[,1]
+
+## ARIMAX MODEL CREST 
+crest.train.arimax = arimax(as.double(oCrest$Crest),
+                            order = c(3,1,0), method = 'ML',
+                            xtransf = data.frame(ADA = stepFCrestARIMAX),
+                            transfer = list(c(0,0)),
+                            xreg = data.frame(Imp1 = 1*(seq(oCrest) == (22 + 12)),
+                                              Imp2 = 1*(seq(oCrest) == (90 + 12)))
+)
+summary(crest.train.arimax)
+```
+
+### Análisis Residuales
+```{r, warning=FALSE, message=FALSE, error=FALSE}
+#residual analysis
+ggtsdisplay(crest.train.arimax$residuals)
+
+#box-Ljung Test
+Box.test(crest.train.arimax$residuals,lag = 4, fitdf = 3, type = "Lj")
+Box.test(crest.train.arimax$residuals,lag = 8, fitdf = 3, type = "Lj")
+Box.test(crest.train.arimax$residuals,lag = 12, fitdf = 3, type = "Lj")
+## Residuales independientes
+```
+
+### Predicción
+```{r, warning=FALSE, message=FALSE, error=FALSE}
+#plot(forecast(crest.train.arimax, h = 16, newxreg = c(0,0)))
+#lines(window(logcrest),type = "o")
+
+#plot(forecast(crest.train.arimax, h = 16), xlim = c(-2800, -2420), ylim = c(-2,0))
+#lines(window(logcrest),type = "o")
+
+#fcrest_arimax <- forecast(crest.train.arimax, h = 16) ## predecimos 16 semanas
+```
+
+### Métricas de Predicción
+```{r, warning=FALSE, message=FALSE}
+#crestArimaxMatrix <- matrix(c(fcrest_arimax$mean[1:16], as.double(tail(logcrest,16))), ncol = 2)
+#crestArimaxMatrix
+## MSE
+#mean((crestArimaxMatrix[,1] - crestArimaxMatrix[,2])^2)
+## MAE
+#mean(abs(crestArimaxMatrix[,1] - crestArimaxMatrix[,2]))
+## Bias
+#mean(crestArimaxMatrix[,1] - crestArimaxMatrix[,2])
+```
+
+## Crest ARIMAX
+```{r, warning=FALSE, message=FALSE}
+## Colgate ARIMAX #####################################################################################
+
+pulseFColgate <- data.frame(ADA = 1*(seq(logcolgate) == which(datos$Date == "1960-08-01")))[,1]
+plot(pulseFColgate)
+
+stepFColgate <- data.frame(ADA = 1*(seq(logcolgate) > which(datos$Date == "1960-08-01")))[,1]
+plot(stepFColgate)
+
+dfcolgate <- data.frame(pulseFColgate,stepFColgate)
+
+colgate.m1 = arimax(as.double(colgate$colgate),
+                  order = c(0,1,1), method = 'ML',
+                  xtransf = dfcolgate,
+                  transfer = list(c(2,0),c(0,0)))
+colgate.m1
+
+## Solo step
+colgate.m1 = arimax(as.double(logcolgate$colgate),
+                    order = c(0,1,1), method = 'ML',
+                    xtransf = data.frame(ADA = stepFColgate),
+                    transfer = list(c(0,0)),
+                    xreg = data.frame(Imp1 = 1*(seq(logcolgate) == (90 + 12)),
+                                      Imp2 = 1*(seq(logcolgate) == (187 + 12)))
+                    )
+colgate.m1
+
+plot(ts(stepFCrest*(-0.3064)))
+
+plot(as.double(logcolgate), ylab = "Log(Colgate)", type = "l")
+points(fitted(colgate.m1), col = "blue")
+```
+
+### Training
+```{r, warning=FALSE, message=FALSE, error=FALSE}
+
+```
+
+### Análisis Residuales
+```{r, warning=FALSE, message=FALSE, error=FALSE}
+
+```
+
+### Predicción
+```{r, warning=FALSE, message=FALSE, error=FALSE}
+
+```
+
+### Métricas de Predicción
+```{r, warning=FALSE, message=FALSE, error=FALSE}
+
+```
+
+## Regresión dinámica y función de transferencia
+```{r, warning=FALSE, message=FALSE}
+
+modDyn <- dynlm(logcrest ~ L(logcrest, 1) + L(logcolgate, 0:12)) 
+modDyn
+
+tsdisplay(modDyn$residuals)
+
+## Diff
+
+modDDyn <- dynlm(diff(logcrest) ~ L(diff(logcrest), 1) + L(diff(logcolgate), 0:12)) 
+modDDyn
+
+tsdisplay(modDDyn$residuals)
+```
+
+ARIMAX
+```{r, warning=FALSE, message=FALSE}
+### ARIMAX
+
+
+
+modDA <- arimax(as.double(diff(logcrest)),
+                order = c(3,1,0),
+                include.mean = T,
+                xtransf = as.double(diff(logcolgate)),
+                transfer = list(c(0,12)),
+                method = "ML")
+modDA
+plot(modDA$coef[4:15], type = "h")
+
+tsdisplay(modDA$residuals)
+
+plot(modDA$coef[4:16], type = "h")
+
+
+```
+
+Todos Signifcativos
+```{r, warning=FALSE, message=FALSE}
+modDA <- arimax(as.double(diff(logcrest)),
+                order = c(3,1,0),
+                include.mean = T,
+                xtransf = as.double(diff(logcolgate)),
+                transfer = list(c(0,0)),
+                method = "ML")
+modDA
+tsdisplay(modDA$residuals)
+```
+

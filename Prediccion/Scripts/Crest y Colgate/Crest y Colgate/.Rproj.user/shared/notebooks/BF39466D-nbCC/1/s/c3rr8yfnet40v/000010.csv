@@ -1,0 +1,6 @@
+"0",""
+"0","ggplot(data = filter(datos, Year == 1959 | Year == 1960 | Year == 1961), aes(x = Date)) +"
+"0","  geom_line(aes(y = Crest, colour = ""Crest"")) +"
+"0","  geom_line(aes(y = Colgate, colour = ""Colgate"")) +"
+"0","  ylab(""log scale Market Share"") +"
+"0","  geom_vline(xintercept = as.numeric(datos$Date[135]), linetype = 2) ## 1 agosto 1960"

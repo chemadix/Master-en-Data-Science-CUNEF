@@ -1,0 +1,25 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1573213633207.000,
+    "dirty" : true,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "195839767",
+    "id" : "667AA7CA",
+    "lastKnownWriteTime" : 1573214437,
+    "last_content_update" : 1573668293241,
+    "path" : "~/CUNEF/Predicción/Series de Tiempo/Series Temporales/MDSF_ST05.R",
+    "project_path" : "MDSF_ST05.R",
+    "properties" : {
+        "cursorPosition" : "76,16",
+        "scrollLine" : "65"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 2,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

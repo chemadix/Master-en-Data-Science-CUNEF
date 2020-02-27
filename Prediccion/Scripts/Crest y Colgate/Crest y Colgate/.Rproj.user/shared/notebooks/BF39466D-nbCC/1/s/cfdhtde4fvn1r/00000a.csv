@@ -1,0 +1,2 @@
+"0",""
+"0","fcolgate_arima <- forecast(colgate.train.arima, h = 16) ## predecimos 16 semanas"

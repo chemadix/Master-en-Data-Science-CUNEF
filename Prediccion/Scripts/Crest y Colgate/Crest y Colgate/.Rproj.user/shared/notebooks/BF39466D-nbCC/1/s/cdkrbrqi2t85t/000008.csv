@@ -1,0 +1,2 @@
+"0",""
+"0","plot(as.double(logcolgate), ylab = ""Log(Colgate)"", type = ""l"")"

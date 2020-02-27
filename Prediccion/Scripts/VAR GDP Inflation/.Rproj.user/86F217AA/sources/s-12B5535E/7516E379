@@ -1,0 +1,33 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1575278731664.000,
+    "dirty" : false,
+    "encoding" : "",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "7516E379",
+    "lastKnownWriteTime" : 1575145318,
+    "last_content_update" : 1575278731664,
+    "path" : null,
+    "project_path" : null,
+    "properties" : {
+        "cacheKey" : "8E8ED89F",
+        "caption" : "forecast_data",
+        "contentUrl" : "grid_resource/gridviewer.html?env=&obj=forecast_data&cache_key=8E8ED89F",
+        "displayedObservations" : "292",
+        "environment" : "",
+        "expression" : "forecast_data",
+        "object" : "forecast_data",
+        "preview" : "0",
+        "totalObservations" : "292",
+        "variables" : "6"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 2,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_dataframe"
+}

@@ -1,0 +1,25 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1574002475486.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "2660926831",
+    "id" : "33934968",
+    "lastKnownWriteTime" : 1574263695,
+    "last_content_update" : 1574263695,
+    "path" : "~/CUNEF/Tecnicas de Clasificacion/Tecnicas de clasificacion/Tarea 2/Tarea 2/scriptTarea2.R",
+    "project_path" : null,
+    "properties" : {
+        "cursorPosition" : "103,36",
+        "scrollLine" : "0"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 6,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

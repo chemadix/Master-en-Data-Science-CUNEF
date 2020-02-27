@@ -1,0 +1,4 @@
+"0","plot(forecast(crest.train.arimax, h = 16, newxreg = c(0,0)))"
+"2","Error in predict.Arima(object, n.ahead = h) : 
+  'xreg' and 'newxreg' have different numbers of columns
+"
